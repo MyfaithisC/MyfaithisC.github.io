@@ -1,0 +1,580 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>我的第一篇博客</title>
+    <url>/2022/09/22/%E6%88%91%E7%9A%84%E7%AC%AC%E4%B8%80%E7%AF%87%E5%8D%9A%E5%AE%A2/</url>
+    <content><![CDATA[<h1 id="当数据表中的列过多-可以采用垂直分表的方式-将一张数据表拆分为多个数据表-把经常一起用的列归为同一个表"><a href="#当数据表中的列过多-可以采用垂直分表的方式-将一张数据表拆分为多个数据表-把经常一起用的列归为同一个表" class="headerlink" title="当数据表中的列过多,可以采用垂直分表的方式,将一张数据表拆分为多个数据表,把经常一起用的列归为同一个表"></a>当数据表中的列过多,可以采用垂直分表的方式,将一张数据表拆分为多个数据表,把经常一起用的列归为同一个表</h1><p>#水平分库:将大的数据表按照某个属性维度分拆为不同的小表(最好分库)<br>#常见的数据库分片的两种方案:<br>#1.客户端代理:分片逻辑在应用端,封装在jar包中,通过修改或者封装JDBC层来实现<br>#2.中间件代理:在应用和数据中间加了一个代理层.分片逻辑统一维护在中间件服务中</p>
+<p>#事务的ACID原则:<br>#原子性:事务要么发生到结束,要么就回滚到开始的时候<br>#一致性:事务执行的前后,数据从一个合法性状态变换到另一个合法性状态(是具体业务的合法性,如存款肯定要大于0)<br>#隔离性:一个事务的执行不能被其他事务干扰,即一个事务内部的操作及使用的数据对并发的其他事务是隔离的,并发执行的各个事务之间不能互相干扰<br>#持久性:事务一旦被提交,它对数据库中数据的改变就是永久性的   持久性是通过事务日志来保证的,日志包括了重做日志和回滚日志.当我们对数据修改的时候,首先会将数据库的变化信息记录到重做日志中,然后再对数据库中对应的行进行修改.好处是即使数据库系统崩溃了,数据库重启后也可以找到没有更新到数据库系统中的重做日志,重写执行,从而使事务具有持久性<br>#总结:原子性是基础,隔离性是手段,一致性是约束条件,持久性是目的</p>
+<p>#显示事务</p>
+<figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java">Runnable runnable=<span class="hljs-keyword">new</span> <span class="hljs-title class_">Runnalbe</span>()&#123;  <span class="hljs-comment">//Runnable为接口类型,其中只有一个抽象类为run要实现</span><br>    <span class="hljs-meta">@Override</span><br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">run</span><span class="hljs-params">()</span>&#123;<br>       System.out.println(<span class="hljs-string">&quot;线程运行...&quot;</span>);<br>    &#125;<br>&#125;;<br><span class="hljs-comment">//因为Runnable接口中只有一个抽象方法,故可以用lambad简化</span><br>Runnable runnable=()-&gt;System.out.println(<span class="hljs-string">&quot;线程运行&quot;</span>);<br>    System.out.println(<span class="hljs-string">&quot;main线程运行&quot;</span>);<br>    Thread thread=<span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>(runnable,<span class="hljs-string">&quot;1&quot;</span>);  <span class="hljs-comment">//运行run方法,并且线程名字为1</span><br>    thread.start();<br></code></pre></td></tr></table></figure>
+
+]]></content>
+  </entry>
+  <entry>
+    <title></title>
+    <url>/2022/09/24/JUC/</url>
+    <content><![CDATA[<h2 id="java并发问题—JUC问题"><a href="#java并发问题—JUC问题" class="headerlink" title="java并发问题—JUC问题"></a>java并发问题—JUC问题</h2><h2 id="写在前面：深入理解CAS"><a href="#写在前面：深入理解CAS" class="headerlink" title="写在前面：深入理解CAS"></a>写在前面：深入理解CAS</h2><h2 id="1-java使用CAS之前"><a href="#1-java使用CAS之前" class="headerlink" title="1.java使用CAS之前:"></a>1.java使用CAS之前:</h2><p>在JDK5之前Java语言是&#x3D;&#x3D;靠synchronized关键字保证同步的&#x3D;&#x3D;，这会导致有锁，&#x3D;&#x3D;锁机制存在以下问题&#x3D;&#x3D;：</p>
+<ul>
+<li><strong>在多线程竞争下，加锁、释放锁会导致比较多的上下文切换和调度延时，引起性能问题</strong></li>
+<li><strong>一个线程持有锁会导致其他所有需要此锁的线程挂起</strong></li>
+<li><strong>如果一个优先级高的线程等待一个优先级低的线程释放锁会导致优先级倒置，引起性能风险</strong></li>
+</ul>
+<p><strong>volatile是不错的机制，但是volatile不能保证原子性。因此对于同步最终还是要回到锁机制上来。</strong></p>
+<p><strong>独占锁是一个悲观锁，synchronized就是一种独占锁，会导致其他所有需要锁的线程挂起，等待持有锁的线程释放锁。而另一种更加有效的锁就是乐观锁，CAS就是一种乐观锁（synchronized是一种悲观锁,CAS是一种乐观锁）</strong></p>
+<h2 id="2-CAS是什么"><a href="#2-CAS是什么" class="headerlink" title="2.CAS是什么:"></a>2.CAS是什么:</h2><p>CAS操作包含三个操作数—— <strong>内存位置的值（V）、预期原值（A）和新值（B）</strong>&#x3D;&#x3D;如果内存位置的值与预期原值相匹配，那么处理器会自动将该位置更新为新值。否则，处理器不做任何操作。无论哪种情况，它都会在CAS指令之前返回该位置的值。&#x3D;&#x3D;CAS有效地说明了“我认为位置V应该包含值A；如果包含该值，则将B放到这个位置；否则，不要更改该位置，只告诉我这个位置现在的值即可”</p>
+<p>CAS是一种有名的<strong>无锁算法</strong>。无锁编程，即不适用锁的情况下实现多线程之间的变量同步，也就是在没有现成被阻塞的情况下实现变量的同步。</p>
+<p><strong>总结如下：</strong></p>
+<ul>
+<li><strong>CAS（Compare And Swap）比较并替换，是线程并发运行时用到的一种技术</strong></li>
+<li><strong>CAS是原子操作，保证并发安全，而不能保证并发同步</strong></li>
+<li><strong>CAS是CPU的一个指令（需要JNI调用Native方法，才能调用CPU的指令）</strong></li>
+<li><strong>CAS是非阻塞的、轻量级的乐观锁</strong></li>
+</ul>
+<h2 id="3-为什么说CAS是乐观锁"><a href="#3-为什么说CAS是乐观锁" class="headerlink" title="3.为什么说CAS是乐观锁"></a>3.为什么说CAS是乐观锁</h2><p>乐观锁，严格来说并不是锁，通过原子性来保证数据的同步，比如说数据库的乐观锁，通过版本控制来实现，所以CAS不会保证线程同步。&#x3D;&#x3D;乐观的认为在数据更新期间没有其他线程影响。&#x3D;&#x3D;</p>
+<h2 id="4-CAS原理"><a href="#4-CAS原理" class="headerlink" title="4.CAS原理"></a>4.CAS原理</h2><p><strong>CAS（Compare And Swap）就是将内存值更新为需要的值，但是有个条件，内存值必须与期望值相同。举个例子，内存值V、期望值A、更新值B，当V &#x3D;&#x3D; A的时候将V更新为B。</strong></p>
+<h2 id="5-CAS应用"><a href="#5-CAS应用" class="headerlink" title="5.CAS应用"></a>5.CAS应用</h2><p>由于CAS是CPU指令，我们只能通过JNI与操作系统交互，关于CAS的方法都在sun.misc包下Unsafe的类里，java.util.concurrent.atomic包下的原子类等通过CAS来实现原子操作</p>
+<h2 id="6-使用乐观锁还是悲观锁"><a href="#6-使用乐观锁还是悲观锁" class="headerlink" title="6.使用乐观锁还是悲观锁"></a>6.使用乐观锁还是悲观锁</h2><p>从上面对两种锁的介绍，我们知道两种锁各有优缺点，不可认为一种好于另一种，像&#x3D;&#x3D;乐观锁适用于写比较少的情况下（多读场景）&#x3D;&#x3D;，即冲突真的很少发生的时候，这样可以省去了锁的开销，加大了系统的吞吐量。但如果是多写的情况，一般会经常发生冲突，这就会导致CAS算法会不断的进行retry，这样反倒是降低了性能，所以&#x3D;&#x3D;一般多写的场景下用悲观锁就比较合适。&#x3D;&#x3D;</p>
+<h2 id="7-CAS优缺点"><a href="#7-CAS优缺点" class="headerlink" title="7.CAS优缺点"></a>7.CAS优缺点</h2><ul>
+<li>&#x3D;&#x3D;优点&#x3D;&#x3D;</li>
+</ul>
+<blockquote>
+<p><strong>非阻塞的轻量级的乐观锁，通过CPU指令实现，在资源竞争不激烈的情况下性能高，相比synchronized重量锁，synchronized会进行比较复杂的加锁、解锁和唤醒操作。</strong></p>
+</blockquote>
+<ul>
+<li>&#x3D;&#x3D;缺点&#x3D;&#x3D;</li>
+</ul>
+<blockquote>
+<p>ABA问题： 线程C、D；线程D将A修改为B后又修改为A，此时C线程以为A没有改变过，java的原子类AtomicStampedReference，通过<strong>控制变量值的版本号</strong>来保证CAS的正确性。具体解决思路就是在变量前追加上版本号，每次变量更新的时候把版本号加一，那么A - B - A就会变成1A - 2B - 3A</p>
+</blockquote>
+<blockquote>
+<p><strong>自旋时间过长，消耗CPU资源，如果资源竞争激烈，多线程自旋长时间消耗资源</strong></p>
+</blockquote>
+<h2 id="1-创建和运行线程"><a href="#1-创建和运行线程" class="headerlink" title="1.创建和运行线程"></a>1.创建和运行线程</h2><h3 id="方法一-直接使用Thread"><a href="#方法一-直接使用Thread" class="headerlink" title="方法一:直接使用Thread"></a>方法一:直接使用Thread</h3><figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java">Thread  thread=<span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>(<span class="hljs-string">&quot;1&quot;</span>)&#123;  <span class="hljs-comment">//创建一个线程,并且1为该线程的名字</span><br>    <span class="hljs-meta">@Override</span><br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">run</span><span class="hljs-params">()</span>&#123;   <span class="hljs-comment">//线程中要执行的代码</span><br>        System.out.println(<span class="hljs-string">&quot;线程运行...&quot;</span>);<br>    &#125;<br>&#125;;<br>     System.out.println(<span class="hljs-string">&quot;main线程运行...&quot;</span>);<br>     thread.start();  <span class="hljs-comment">//让线程开始运行/启动</span><br><br></code></pre></td></tr></table></figure>
+
+<h3 id="方法二-使用Runnable配合Thread"><a href="#方法二-使用Runnable配合Thread" class="headerlink" title="方法二:使用Runnable配合Thread"></a>方法二:使用Runnable配合Thread</h3><figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java">Runnable runnable=<span class="hljs-keyword">new</span> <span class="hljs-title class_">Runnalbe</span>()&#123;  <span class="hljs-comment">//Runnable为接口类型,其中只有一个抽象类为run要实现</span><br>    <span class="hljs-meta">@Override</span><br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">run</span><span class="hljs-params">()</span>&#123;<br>       System.out.println(<span class="hljs-string">&quot;线程运行...&quot;</span>);<br>    &#125;<br>&#125;;<br><span class="hljs-comment">//因为Runnable接口中只有一个抽象方法,故可以用lambad简化</span><br>Runnable runnable=()-&gt;System.out.println(<span class="hljs-string">&quot;线程运行&quot;</span>);<br>    System.out.println(<span class="hljs-string">&quot;main线程运行&quot;</span>);<br>    Thread thread=<span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>(runnable,<span class="hljs-string">&quot;1&quot;</span>);  <span class="hljs-comment">//运行run方法,并且线程名字为1</span><br>    thread.start();<br><span class="hljs-comment">//这样的目的是为了将创建线程和任务分离开,使得他们更加灵活</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="方法三-FutureTask配合Thread"><a href="#方法三-FutureTask配合Thread" class="headerlink" title="方法三:FutureTask配合Thread"></a>方法三:FutureTask配合Thread</h3><figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java">FutureTask&lt;Integer&gt; futureTask=<span class="hljs-keyword">new</span> <span class="hljs-title class_">FutureTask</span>&lt;Integer&gt;(<span class="hljs-keyword">new</span> <span class="hljs-title class_">Callable</span>&lt;Integer&gt;()&#123;  <br>             <span class="hljs-meta">@Override</span><br>            <span class="hljs-keyword">public</span> Integer <span class="hljs-title function_">call</span><span class="hljs-params">()</span> <span class="hljs-keyword">throws</span> Exception &#123;<br>                System.out.println(<span class="hljs-string">&quot;线程运行....&quot;</span>);<br>                Thread.sleep(<span class="hljs-number">1000</span>);<br>                <span class="hljs-keyword">return</span> <span class="hljs-number">100</span>;<br>            &#125;<br>&#125;);<br>    Thread thread=<span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>(futureTask);<br>     thread.start();<br>     futureTask.get();  <span class="hljs-comment">//获取线程任务的返回值</span><br><span class="hljs-comment">//FutureTask&lt;V&gt;类实现了RunnableFuture&lt;V&gt;接口,然后这个接口类RunnableFuture&lt;V&gt;继承于Runnable, Future&lt;V&gt; </span><br></code></pre></td></tr></table></figure>
+
+<h2 id="2-查看和杀死线程运行"><a href="#2-查看和杀死线程运行" class="headerlink" title="2.查看和杀死线程运行"></a>2.查看和杀死线程运行</h2><h3 id="Windows下："><a href="#Windows下：" class="headerlink" title="Windows下："></a>Windows下：</h3><ul>
+<li>任务管理器可以查看进程和线程数,也可以杀死进行和线程</li>
+<li>控制台中:tasklist &#x3D;&#x3D;查看所有进程&#x3D;&#x3D;  taskkill &#x3D;&#x3D;杀死进程&#x3D;&#x3D; (可以过滤)</li>
+</ul>
+<h3 id="Linux下"><a href="#Linux下" class="headerlink" title="Linux下:"></a>Linux下:</h3><ul>
+<li>ps -fe 查看所有进程</li>
+<li>ps -fT -p<PID>  查看某个进程(PID)的所有线程状态</li>
+<li>kill   杀死进程</li>
+<li>top按大写H切换是否显示线程</li>
+<li>top -H -p<PID>  查看某个进程(PID)的所有线程状态</li>
+</ul>
+<h3 id="java下"><a href="#java下" class="headerlink" title="java下:"></a>java下:</h3><ul>
+<li>jps命令查看所有java进程(控制台上)</li>
+<li>jstack<PID>查看某个java进程(PID)的所有线程状态</li>
+<li>jconsole来查看某个java进程中线程的运行情况(&#x3D;&#x3D;在win+R键内填入jconsole&#x3D;&#x3D;)</li>
+</ul>
+<h2 id="3-常用方法"><a href="#3-常用方法" class="headerlink" title="3.常用方法"></a>3.常用方法</h2><table>
+<thead>
+<tr>
+<th>方法名</th>
+<th>功能说明</th>
+<th>注意</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>start()</td>
+<td>启动一个新线程,在新的线程运行run方法中的代码</td>
+<td>start方法只是让线程进入就绪,里面代码不一定立刻运行(CPU的时间片还没有分给它).每个线程对象的start方法只能调用一次,如果调用了多次会报错</td>
+</tr>
+<tr>
+<td>run()</td>
+<td>新线程启动会调用的方法</td>
+<td>如果在构造Thread对象时传递了Runnable参数,则线程启动后会调用Runnable中的run方法,否则默认不执行任何操作,但是可以创建Thread的子类对象,来覆盖默认行为</td>
+</tr>
+<tr>
+<td>join()</td>
+<td>等待线程运行结束</td>
+<td>一直等待直到线程运行结束</td>
+</tr>
+<tr>
+<td>join(long n)</td>
+<td>等待线程运行结束,最多等待n毫秒</td>
+<td></td>
+</tr>
+<tr>
+<td>getid()</td>
+<td>获取线程长整型的id</td>
+<td>id唯一</td>
+</tr>
+<tr>
+<td>getName()</td>
+<td>获取线程名</td>
+<td></td>
+</tr>
+<tr>
+<td>setName(String)</td>
+<td>修改线程名</td>
+<td></td>
+</tr>
+<tr>
+<td>getPriority()</td>
+<td>获取线程优先级</td>
+<td></td>
+</tr>
+<tr>
+<td>setPriority(int)</td>
+<td>修改线程优先级</td>
+<td>java中规定线程优先级为1-10的整数,较大的优先级能较大几率被CPU所调度</td>
+</tr>
+<tr>
+<td>interrupt()</td>
+<td>打断线程</td>
+<td>如果被打断线程正在sleep,wait,join会导致打断的线程抛出异常,并清除打断标记,如果打断的正在运行的线程,则会设置打断标记,park的线程被打断,也会设置打断标记</td>
+</tr>
+<tr>
+<td>currentThread()</td>
+<td>获取当前正在执行的线程</td>
+<td></td>
+</tr>
+<tr>
+<td>isInterrupted()</td>
+<td>判断是否被打断</td>
+<td>不会清除打断标记</td>
+</tr>
+<tr>
+<td>interrupted()</td>
+<td>判断当前线程是否被打断</td>
+<td>会清除打断标记</td>
+</tr>
+<tr>
+<td>yield()</td>
+<td>提示线程调度器让出当前线程对CPU的使用</td>
+<td>主要是为了测试和调试</td>
+</tr>
+</tbody></table>
+<h2 id="4-常见方法的使用"><a href="#4-常见方法的使用" class="headerlink" title="4.常见方法的使用"></a>4.常见方法的使用</h2><h3 id="1-run-方法和start-方法的比较"><a href="#1-run-方法和start-方法的比较" class="headerlink" title="1.run()方法和start()方法的比较"></a>1.run()方法和start()方法的比较</h3><figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java">Thread thread=<span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>()&#123;<br>  <span class="hljs-meta">@Override</span><br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">run</span><span class="hljs-params">()</span>&#123;<br>        System.out.println(<span class="hljs-string">&quot;线程运行...&quot;</span>);<br>    &#125;<br>&#125;; <br>    thread.run();   <span class="hljs-comment">//用run方法执行的线程依然是主线程(main方法)执行</span><br>    thread.getState();  <span class="hljs-comment">//在还没有调用start方法之前,线程状态为NEW</span><br>    thread.start();   <span class="hljs-comment">//start方法才可以对该创建的线程的调度(运行)</span><br>    thread.getState();   <span class="hljs-comment">//在调用之后,线程状态为Runnable(就绪态,一旦获取了CPU的调度,就立即运行)</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="2-sleep的打断"><a href="#2-sleep的打断" class="headerlink" title="2.sleep的打断"></a>2.sleep的打断</h3><figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java">  Thread thread=<span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>()&#123;<br>      <span class="hljs-meta">@Override</span><br>      <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">run</span><span class="hljs-params">()</span>&#123;<br>               System.out.println(<span class="hljs-string">&quot;enter sleep...&quot;</span>);<br>           <span class="hljs-keyword">try</span> &#123;<br>                   Thread.sleep(<span class="hljs-number">2000</span>);<br>               &#125; <span class="hljs-keyword">catch</span> (InterruptedException e) &#123;<br>                   System.out.println(<span class="hljs-string">&quot;线程被打断了...&quot;</span>);<br>                   e.printStackTrace();<br>               &#125;<br>    &#125;<br>&#125;;<br>      thread.start();<br>      Thread.sleep(<span class="hljs-number">1000</span>);<br>      System.out.println(<span class="hljs-string">&quot;interrupt...&quot;</span>);<br>      thread.interrupt();  <span class="hljs-comment">//打断睡眠的线程</span><br><span class="hljs-comment">//使用interrupt会使正在睡眠的线程被打断(唤醒使之运行),但是会抛出异常InterruptedException</span><br><span class="hljs-comment">//可以使用TimeUite(api里面有众多时间单位)来代替sleep方法</span><br><span class="hljs-comment">//使用sleep会让当前线程从Running(运行态)进入Timed Waiting状态(阻塞态)</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="3-sleep和yield的说明"><a href="#3-sleep和yield的说明" class="headerlink" title="3.sleep和yield的说明"></a>3.sleep和yield的说明</h3><h3 id="sleep："><a href="#sleep：" class="headerlink" title="sleep："></a>sleep：</h3><ul>
+<li>调用sleep会让当前线程从运行态直接变为阻塞态</li>
+<li>其他线程可以用interrupt方法打断正在睡眠的线程,但是此时sleep的线程会抛出异常</li>
+<li>睡眠结束后的线程未必会立即得到执行(就绪态)</li>
+<li>使用TimeUite的sleep代替Thread的sleep会有更好的可读性</li>
+</ul>
+<h3 id="yield："><a href="#yield：" class="headerlink" title="yield："></a>yield：</h3><ul>
+<li>调用yield会让当前线程从运行态进行就绪态,然后调度执行其他线程</li>
+</ul>
+<h3 id="4-防止CPU占用100-的案例"><a href="#4-防止CPU占用100-的案例" class="headerlink" title="4.防止CPU占用100%的案例"></a>4.防止CPU占用100%的案例</h3><figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">while</span>(<span class="hljs-literal">true</span>)&#123;<br>    <span class="hljs-keyword">try</span>&#123;<br>        Thread.sleep(<span class="hljs-number">50</span>);  <span class="hljs-comment">//这里sleep中的值可以很小</span><br>    &#125;<span class="hljs-keyword">catch</span>(InterruptedException e)&#123;<br>        e.printStackTrace();<br>    &#125;<br>&#125;<br><span class="hljs-comment">//当不加Thread.sleep(50)时,此时线程的CPU的占比接近于100%,即没有其他的线程可以调度,这是不允许出现的状况</span><br><span class="hljs-comment">//防止CPU空转,当了Thread.sleep(50)后,CPU占比将只占到3%或者4%左右</span><br><span class="hljs-comment">//可以用wait或者条件变量达到类似的效果,不同的是,这2中都需要加锁,还都需要相应的唤醒操作(一般用于进行同步场景),而sleep适用于无需锁同步的场景</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="5-join的应用-一般用于同步问题-并且CPU为单核时才可以"><a href="#5-join的应用-一般用于同步问题-并且CPU为单核时才可以" class="headerlink" title="5.join的应用(一般用于同步问题,并且CPU为单核时才可以)"></a>5.join的应用(一般用于同步问题,并且CPU为单核时才可以)</h3> <figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java">   <span class="hljs-type">int</span> r=<span class="hljs-number">0</span>;                                                  <span class="hljs-type">int</span> r=<span class="hljs-number">0</span>;<br>Thread thread=<span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>(()-&gt;&#123;                       Thread thread=<span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>(()-&gt;&#123;<br>      Thread.sleep(<span class="hljs-number">10</span>);                                        Thread.sleep(<span class="hljs-number">10</span>);<br>            r=<span class="hljs-number">10</span>;                                                 r=<span class="hljs-number">10</span>;    <br>&#125;,<span class="hljs-string">&quot;1&quot;</span>);                                                       &#125;,<span class="hljs-string">&quot;1&quot;</span>);<br> thread.start();                                          thread.start();  thread.join();<span class="hljs-comment">//让其他线程等待该线程完</span><br>System.out.println(r);                                   System.out.println(r);                                <br><span class="hljs-comment">//此时会输出r=0,因为主线程不会等待1线程运行完              输出为10</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="6-interrupt方法"><a href="#6-interrupt方法" class="headerlink" title="6.interrupt方法"></a>6.interrupt方法</h3><h3 id="情况一-当打断不正常运行的线程-比如sleep、wait和join状态-的时候-会清空打断状态-即isInterrupted-的输出值为true"><a href="#情况一-当打断不正常运行的线程-比如sleep、wait和join状态-的时候-会清空打断状态-即isInterrupted-的输出值为true" class="headerlink" title="情况一:当打断不正常运行的线程(比如sleep、wait和join状态)的时候,会清空打断状态,即isInterrupted()的输出值为true"></a>情况一:当打断不正常运行的线程(比如sleep、wait和join状态)的时候,会清空打断状态,即isInterrupted()的输出值为true</h3><h3 id="情况二-当打断正常运行的线程时-会清空打断状态-即isInterrupted-的输出值为true-而当此时正常线程没有运行然后打断-则isInterrupted-的输出值为flase"><a href="#情况二-当打断正常运行的线程时-会清空打断状态-即isInterrupted-的输出值为true-而当此时正常线程没有运行然后打断-则isInterrupted-的输出值为flase" class="headerlink" title="情况二:当打断正常运行的线程时,会清空打断状态,即isInterrupted()的输出值为true.而当此时正常线程没有运行然后打断,则isInterrupted()的输出值为flase"></a>情况二:当打断正常运行的线程时,会清空打断状态,即isInterrupted()的输出值为true.而当此时正常线程没有运行然后打断,则isInterrupted()的输出值为flase</h3><figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java">Thread thread= <span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>(()-&gt;&#123;<br>    Thread.sleep(<span class="hljs-number">2000</span>);<br>    System.out.println(<span class="hljs-string">&quot;线程被打断&quot;</span>);<br>&#125;);<br>thread.start();<br>Thread.sleep(<span class="hljs-number">1000</span>);<br>thread.interrupt();  <br><span class="hljs-comment">//此时打断线程thread后,会抛出异常InterruptedException------打断不正常运行的线程</span><br><br>Thread thread= <span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>(()-&gt;&#123;<br>    <span class="hljs-keyword">while</span>(<span class="hljs-literal">true</span>)&#123;<br>             Boolean isterrupted=Thread.currentThread().isterrupt();<br>          <span class="hljs-keyword">if</span>(isterrupted)&#123;<br>                System.out.println(<span class="hljs-string">&quot;线程被打断&quot;</span>);<br>                  <span class="hljs-keyword">break</span>;<br>          &#125;<br>          <br>    &#125;<br><br>&#125;);<br>thread.start();<br>Thread.sleep(<span class="hljs-number">1000</span>);  <span class="hljs-comment">//让thread线程运行</span><br>thread.interrupt();  <br><br></code></pre></td></tr></table></figure>
+
+<h3 id="情况三-两阶段终止"><a href="#情况三-两阶段终止" class="headerlink" title="情况三:两阶段终止"></a>情况三:两阶段终止</h3><figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">class</span> <span class="hljs-title class_">TwoPhaseTermination</span>&#123;<br>    <span class="hljs-keyword">private</span>  Thread  monitor;  <span class="hljs-comment">//监控线程 </span><br>    <span class="hljs-comment">//启动线程</span><br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">start</span><span class="hljs-params">()</span>&#123;<br>        monitor=<span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>(()-&gt;&#123;<br>            <span class="hljs-keyword">while</span>(<span class="hljs-literal">true</span>)&#123;<br>            <span class="hljs-type">boolean</span> <span class="hljs-variable">interrupted</span> <span class="hljs-operator">=</span> Thread.currentThread().isInterrupted();<br>                <span class="hljs-keyword">if</span>(interrupted)&#123;<br>                    System.out.println(<span class="hljs-string">&quot;料理后事&quot;</span>);<br>                    <span class="hljs-keyword">break</span>;<br>                &#125;<br>                   <span class="hljs-keyword">try</span> &#123;<br>                    Thread.sleep(<span class="hljs-number">1000</span>);<br>                    System.out.println(<span class="hljs-string">&quot;执行监控记录...&quot;</span>);<br>                &#125; <span class="hljs-keyword">catch</span> (InterruptedException e) &#123;<br>                    e.printStackTrace();<br>                     monitor.interrupt();  <span class="hljs-comment">//interrupt打断sleep会清除了打断标记,故要加上打断标记,让循环结束</span><br>            &#125;<br>        &#125;);<br> &#125;  <br>  <span class="hljs-comment">//打断线程</span><br>  <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">stop</span><span class="hljs-params">()</span>&#123;<br>      monitor.interrupt();  <br>  &#125;                    <br>&#125;<br>             TwoPhaseTermination  t1=<span class="hljs-keyword">new</span>  <span class="hljs-title class_">TwoPhaseTermination</span>();<br>                           t1.start();<br>                           Thread.sleep(<span class="hljs-number">3.5</span>);<br>                           t1.stop();<br></code></pre></td></tr></table></figure>
+
+<h3 id="7-打断park方法"><a href="#7-打断park方法" class="headerlink" title="7.打断park方法"></a>7.打断park方法</h3><figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java">Thread  thread=<span class="hljs-keyword">new</span>  <span class="hljs-title class_">Thread</span>(()-&gt;&#123;<br>     System.out.println(<span class="hljs-string">&quot;测试park方法&quot;</span>);<br>    LockSupport.park();<br>    System.out.println(Thread.currentThread().isInterrupted());  <br>&#125;);<br> thread.start();<br> Thread.sleep(<span class="hljs-number">1</span>);<br> thread.interrupt();   <span class="hljs-comment">//调用interrupt方法会打断park()方法,并且只要打断标记为true时,park将会失效</span><br><br></code></pre></td></tr></table></figure>
+
+<h3 id="8-守护线程"><a href="#8-守护线程" class="headerlink" title="8.守护线程"></a>8.守护线程</h3><figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java">  Thread  thread=<span class="hljs-keyword">new</span>  <span class="hljs-title class_">Thread</span>(()-&gt;&#123;<br>      <span class="hljs-keyword">while</span>(<span class="hljs-literal">true</span>)&#123;<br>               System.out.println(<span class="hljs-string">&quot;守护线程来了...&quot;</span>);<br>               <span class="hljs-keyword">try</span> &#123;<br>                   Thread.sleep(<span class="hljs-number">2000</span>);<br>               &#125; <span class="hljs-keyword">catch</span> (InterruptedException e) &#123;<br>                   e.printStackTrace();<br>               &#125;<br>               <span class="hljs-keyword">if</span> (Thread.currentThread().isInterrupted())&#123;<br>                   <span class="hljs-keyword">break</span>;<br>               &#125;<br>           &#125;<br>       &#125;);<br>       thread.setDaemon(<span class="hljs-literal">true</span>);  <span class="hljs-comment">//设置为守护线程</span><br>       thread.start();<br>       System.out.println(<span class="hljs-string">&quot;主线程结束了...&quot;</span>);<br><span class="hljs-comment">//守护线程:当其他线程结束时,会被强制结束</span><br><span class="hljs-comment">//几种典型的守护线程: 垃圾回收线程就是一种守护线程  </span><br>                 <span class="hljs-comment">// Tomcat中的Acceptot和Poller线程都是守护线程,所以当Tomcat收到了shutdown命令后,不会等待它们处理完当前                      请求  </span><br></code></pre></td></tr></table></figure>
+
+<h3 id="9-java中线程的六种状态"><a href="#9-java中线程的六种状态" class="headerlink" title="9.java中线程的六种状态"></a>9.java中线程的六种状态</h3><ul>
+<li><p><strong>New: 线程刚被创建,但是还有调用start方法()</strong></p>
+</li>
+<li><p><strong>Runnable: 当调用了start()方法之后,注意,Java API层面的Runnable状态包括了操作系统层面的就绪态,运行态和阻塞态</strong></p>
+</li>
+<li><p><strong>Blocked: 阻塞态(被别人’抢锁了’)</strong></p>
+</li>
+<li><p><strong>Waiting: 阻塞态(没有时限的等待，如thread.join()  但是thread线程为死循环)</strong></p>
+</li>
+<li><p><strong>Time_Waiting: 阻塞态(有时限的等待，如sleep(2000))</strong></p>
+</li>
+<li><p><strong>Terminated: 当线程代码运行结束</strong></p>
+</li>
+</ul>
+<h2 id="5-共享模型之管程"><a href="#5-共享模型之管程" class="headerlink" title="5.共享模型之管程"></a>5.共享模型之管程</h2><p><strong>为了避免临界区的竞态条件发生,有多种手段可以达到目的</strong></p>
+<ul>
+<li><strong>阻塞式的解决方案:synchronized,Lock</strong></li>
+<li><strong>非阻塞式的解决方法:原子变量</strong></li>
+</ul>
+<h3 id="5-1-synchronized的基本使用（面向过程）"><a href="#5-1-synchronized的基本使用（面向过程）" class="headerlink" title="5.1.synchronized的基本使用（面向过程）"></a>5.1.synchronized的基本使用（面向过程）</h3><figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">static</span>  <span class="hljs-type">int</span> n=<span class="hljs-number">0</span>;<br><span class="hljs-keyword">static</span>   Object lock=<span class="hljs-keyword">new</span> <span class="hljs-title class_">Object</span>();<br>Thread  t1=<span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>(()-&gt;&#123;<br>       synchrionized(lock)&#123;<br>        <span class="hljs-keyword">for</span>(<span class="hljs-type">int</span> i=<span class="hljs-number">0</span>;i&lt;<span class="hljs-number">5000</span>;i++)&#123;<br>          n++;<br>         &#125;  <br>     &#125;<br>&#125;);<br>Thread  t2=<span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>(()-&gt;&#123;<br>      synchrionized(lock)&#123;<br>      <span class="hljs-keyword">for</span>(<span class="hljs-type">int</span> i=<span class="hljs-number">0</span>;i&lt;<span class="hljs-number">5000</span>;i++)&#123;<br>          n--;<br>      &#125;<br>    &#125;<br>&#125;);<br>    t1.start();<br>    t2.start();<br>    t1.join();   <span class="hljs-comment">//两个join操作是为了保证并发的执行</span><br>    t2.join();<br>    System.out.println(n);<br><span class="hljs-comment">//synchronized锁使用的语法  被synchronized加锁的代码,只能有一个线程进入(因为加锁了),其他线程想进入会变为阻塞态,当sychronized加锁的代码执行完之后,才会将其他线程(想进入代码区的)唤醒</span><br> 语法: <span class="hljs-keyword">synchronized</span>(对象)&#123;<br>     <span class="hljs-comment">// 代码执行区</span><br>  &#125;<br><br><span class="hljs-comment">//如果想对同一临界区进行保护,用得必须是同一个对象,如以上操作是对临界区n的值进行保护的,如果用的是synchronized(obj1)和synchronized(obj2)的话,则对临界区的访问是不一样的,加synchronized锁的第一步是获取锁,如果没有获取锁则线程会处于blocked</span><br><br><span class="hljs-comment">//所以对于上述操作,如果其中一个线程没有加synchronized锁的话,也不会得到正确的结果,因为其中一个线程不会处于阻塞状态,也会影响到另外一个线程的进行(值写入寄存器)</span><br><br><span class="hljs-comment">//synchronized实际是用对象锁保证了临界区内代码的原子性</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="5-2-synchronized的改造-面向对象"><a href="#5-2-synchronized的改造-面向对象" class="headerlink" title="5.2.synchronized的改造(面向对象)"></a><strong>5.2.synchronized的改造(面向对象)</strong></h3><figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title class_">synchronized</span>锁_面向对象 &#123;<br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">main</span><span class="hljs-params">(String[] args)</span> &#123;<br>        <span class="hljs-type">Room</span> <span class="hljs-variable">room</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Room</span>();<br>        <span class="hljs-type">Thread</span> <span class="hljs-variable">thread</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>(()-&gt;&#123;<br>            <span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> <span class="hljs-variable">i</span> <span class="hljs-operator">=</span> <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">5000</span>;i++)&#123;<br>                room.add();<br>            &#125;<br><br>        &#125;);<br>        <span class="hljs-type">Thread</span> <span class="hljs-variable">thread1</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>(()-&gt;&#123;<br>            <span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> <span class="hljs-variable">i</span> <span class="hljs-operator">=</span> <span class="hljs-number">0</span>; i &lt;<span class="hljs-number">5000</span>;i++)&#123;<br>                room.desc();;<br>            &#125;<br>        &#125;);<br>        thread.start();<br>        thread1.start();<br>        System.out.println(room.result());<br>    &#125;<br><br><br>&#125;<br><span class="hljs-keyword">class</span> <span class="hljs-title class_">Room</span>&#123;<br>    <span class="hljs-keyword">private</span> <span class="hljs-type">int</span> count=<span class="hljs-number">0</span>;<br>    <span class="hljs-comment">//加操作</span><br>    <span class="hljs-keyword">public</span>  <span class="hljs-keyword">void</span>  <span class="hljs-title function_">add</span><span class="hljs-params">()</span>&#123;<br>         <span class="hljs-keyword">synchronized</span>(<span class="hljs-built_in">this</span>)&#123;<br>             count++;<br>         &#125;<br>    &#125;<br>    <span class="hljs-comment">//减操作</span><br>    <span class="hljs-keyword">public</span>  <span class="hljs-keyword">void</span>  <span class="hljs-title function_">desc</span><span class="hljs-params">()</span>&#123;<br>        <span class="hljs-keyword">synchronized</span>(<span class="hljs-built_in">this</span>)&#123;<br>            count--;<br>        &#125;<br>    &#125;<br>    <span class="hljs-comment">//获取结果</span><br>    <span class="hljs-keyword">public</span>  <span class="hljs-type">int</span> <span class="hljs-title function_">result</span><span class="hljs-params">()</span>&#123;<br>        <span class="hljs-keyword">synchronized</span>(<span class="hljs-built_in">this</span>)&#123;<br>            <span class="hljs-keyword">return</span> count;<br>        &#125;<br>    &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<h3 id="5-3-synchronized加在方法上"><a href="#5-3-synchronized加在方法上" class="headerlink" title="5.3.synchronized加在方法上"></a><strong>5.3.synchronized加在方法上</strong></h3><figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">class</span> <span class="hljs-title class_">Test</span>&#123;<span class="hljs-keyword">public</span> <span class="hljs-keyword">synchronized</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">test</span><span class="hljs-params">()</span>&#123;&#125;&#125;--&gt;<span class="hljs-keyword">class</span> <span class="hljs-title class_">Test</span>&#123;<span class="hljs-keyword">public</span> <span class="hljs-keyword">synchronized</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">test</span><span class="hljs-params">()</span>&#123;<br>    <span class="hljs-keyword">synchronized</span>(<span class="hljs-built_in">this</span>)&#123;<br>        <br>    &#125;<br> &#125;<br>&#125;<br><br><span class="hljs-keyword">class</span> <span class="hljs-title class_">Test</span>&#123;<span class="hljs-keyword">public</span> <span class="hljs-keyword">synchronized</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">test</span><span class="hljs-params">()</span>&#123;&#125;&#125;--&gt;<span class="hljs-keyword">class</span> <span class="hljs-title class_">Test</span>&#123;<span class="hljs-keyword">public</span> <span class="hljs-keyword">synchronized</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">test</span><span class="hljs-params">()</span>&#123;<br>    <span class="hljs-keyword">synchronized</span>(Test.class)&#123;<br>    &#125;<br>   &#125;<br>&#125;<br><span class="hljs-comment">//当锁的对象为类对象时,这个时候创建Test t1=new Test();  Test t2=new Test()两个对象 不会影响加锁的情况(视为同一个对象)</span><br></code></pre></td></tr></table></figure>
+
+<p><strong>用final和private修饰方法是对方法保护一种措施</strong></p>
+<h3 id="5-4-常见的线程安全类"><a href="#5-4-常见的线程安全类" class="headerlink" title="5.4.常见的线程安全类"></a>5.4.常见的线程安全类</h3><ul>
+<li>String（本质是不可变的,即只能读不能改,并且为final修饰,不会因为子类的问题导致String线程不安全）</li>
+<li>Integer</li>
+<li>StringBuffer</li>
+<li>Random</li>
+<li>Vector</li>
+<li>Hashtable（本质是通过synchronized来实现的）</li>
+<li>java.util.concurrent包下的类</li>
+</ul>
+<p><strong>这里说它们是线程安全的是指,多个线程调用它们同一个实例的某个方法时,是线程安全的.也可以理解为它们的每个方法是原子的,但是当它们的方法组合来用时,可能就是线程不安全的</strong></p>
+<h3 id="5-5-Monitor-操作系统提供的监控或者管程-概念"><a href="#5-5-Monitor-操作系统提供的监控或者管程-概念" class="headerlink" title="5.5.Monitor(操作系统提供的监控或者管程)概念"></a>5.5.Monitor(操作系统提供的监控或者管程)概念</h3><h3 id="5-6-对象头"><a href="#5-6-对象头" class="headerlink" title="5.6.对象头"></a>5.6.对象头</h3><table>
+<thead>
+<tr>
+<th>普通对象</th>
+<th>Objet Header(64 bit)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Mark  Word(32 bits)</td>
+<td>Klass  Word(32 bit)</td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>数组对象</th>
+<th>Object Header(96bits)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Mark Word(32 bit)</td>
+<td>Klass Word(32bit)               array length(32 bits)</td>
+</tr>
+</tbody></table>
+<h3 id="5-7-其中Mark-Word的结构为-（存储hashcode-分代信息-锁标记位和GC标记）"><a href="#5-7-其中Mark-Word的结构为-（存储hashcode-分代信息-锁标记位和GC标记）" class="headerlink" title="5.7.其中Mark Word的结构为:（存储hashcode,分代信息,锁标记位和GC标记）"></a>5.7.其中Mark Word的结构为:（存储hashcode,分代信息,锁标记位和GC标记）</h3><table>
+<thead>
+<tr>
+<th>Mark Word(32bit)</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>hashcode:25    | age:4 | biased_lock:0 | 01（无锁）</td>
+<td>Normal</td>
+</tr>
+<tr>
+<td>thread:23 | epoch:2 | age:4 | biased_lock:1 | 01（无锁）</td>
+<td>Biased</td>
+</tr>
+<tr>
+<td>ptr_to_lock_record:30                                  | 00（轻量级锁）</td>
+<td>Lightweight  Locked</td>
+</tr>
+<tr>
+<td>ptr_to_heavyweight_monitor:30         | 10（重量级锁）</td>
+<td>Heavyweigh Locked</td>
+</tr>
+<tr>
+<td>| 11（标记为GC清理）</td>
+<td>Marked for GC</td>
+</tr>
+</tbody></table>
+<p><img src="C:\Users\ASUS\AppData\Roaming\Typora\typora-user-images\image-20220918111058785.png" alt="image-20220918111058785"></p>
+<ul>
+<li>刚开始Monitor中Owner为null</li>
+<li>当Thread-2执行synchronized(obj)就会将Monitor的所有者Owner置为Thread-2,Monitor中只能有一个Owner</li>
+<li>在Thread-2上锁的过程中,如果Thread-3,Thread-4,Thread-5也来执行synchronized(obj),就会进入EntryList  执行状态为Blocked</li>
+<li>Thread-2执行完同步代码块的内容,然后唤醒EntryList中等待的线程来竞争锁,竞争的时候是非公平的</li>
+<li>图中WaitSet中的Thread-0,Thread-1是之前获得过锁,但是条件不满足进入了Waiting状态的线程,后面讲wait-notify时会分析</li>
+</ul>
+<p><img src="C:\Users\ASUS\AppData\Roaming\Typora\typora-user-images\image-20220918112123384.png" alt="image-20220918112123384"></p>
+<h3 id="5-8-每个obj类关联一个Monitor-上图为Monitor的执行原理"><a href="#5-8-每个obj类关联一个Monitor-上图为Monitor的执行原理" class="headerlink" title="5.8.每个obj类关联一个Monitor           上图为Monitor的执行原理"></a>5.8.每个obj类关联一个Monitor           上图为Monitor的执行原理</h3><h3 id="6-synchronized原理进阶"><a href="#6-synchronized原理进阶" class="headerlink" title="6.synchronized原理进阶"></a>6.synchronized原理进阶</h3><h4 id="6-1-轻量级锁"><a href="#6-1-轻量级锁" class="headerlink" title="6.1.轻量级锁"></a>6.1.轻量级锁</h4><p>轻量级锁的使用场景：如果一个对象虽然有多线程访问,但是多线程访问的时间是错开的(也就是没有竞争),那么可以使用轻量级锁来优化</p>
+<p>轻量级锁对使用者是透明的,语法仍然是synchronized(即会自动使用轻量级锁,当轻量级锁不能完成时,会自动升级为重量级锁)</p>
+<figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">static</span> <span class="hljs-keyword">final</span> Object obj=<span class="hljs-keyword">new</span> <span class="hljs-title class_">Object</span>();<br><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">method1</span><span class="hljs-params">()</span>&#123;<br>    <span class="hljs-keyword">synchronized</span>(obj)&#123;<br>        <span class="hljs-comment">//同步块A</span><br>        method2();<br>    &#125;<br>&#125;<br><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">method2</span><span class="hljs-params">()</span>&#123;<br>    <span class="hljs-keyword">synchronized</span>(obj)&#123;<br>        <span class="hljs-comment">//同步块B</span><br>    &#125;<br>&#125;<br><br><span class="hljs-comment">//从互斥锁的设计上来说，当一个线程试图操作一个由其他线程持有的对象锁的临界资源时，将会处于阻塞状态，但当一个线程再次请求自己持有对象锁的临界资源时，这种情况属于重入锁，请求将会成功.</span><br></code></pre></td></tr></table></figure>
+
+<p><strong>1.创建&#x3D;&#x3D;锁记录（Lock Record）&#x3D;&#x3D;对象，每个线程都的栈帧都会包含一个锁记录的结构，内部可以存储锁定对象的&#x3D;&#x3D;Mark Word&#x3D;&#x3D;</strong></p>
+<p><img src="https://img2020.cnblogs.com/blog/863118/202201/863118-20220113164105192-1790195589.png" alt="img"></p>
+<p><strong>2.让锁记录中&#x3D;&#x3D;Object reference&#x3D;&#x3D;指向锁对象，并尝试用 cas 替换 Object 的 Mark Word，将 Mark Word 的值存入锁记录</strong></p>
+<p><img src="https://img2020.cnblogs.com/blog/863118/202201/863118-20220113164118025-2005661471.png" alt="img"></p>
+<p><strong>3.如果 cas 替换成功，对象头中存储了 锁记录地址和状态 00 ，表示由该线程给对象加锁，这时图示如下: &#x3D;&#x3D;线程中的锁信息和锁对象中的Mark Word发生了替换&#x3D;&#x3D;</strong></p>
+<p><img src="https://img2020.cnblogs.com/blog/863118/202201/863118-20220113164211576-1108189965.png" alt="img"></p>
+<p><strong>4.如果 cas 失败，有两种情况</strong></p>
+<ul>
+<li><strong>如果是其它线程已经持有了该 Object 的&#x3D;&#x3D;轻量级锁&#x3D;&#x3D;，这时表明有竞争，进入&#x3D;&#x3D;锁膨胀&#x3D;&#x3D;过程</strong></li>
+<li><strong>如果是自己执行了 synchronized 锁重入，那么再添加一条&#x3D;&#x3D;Lock Record&#x3D;&#x3D;作为重入的计数</strong></li>
+</ul>
+<p><img src="https://img2020.cnblogs.com/blog/863118/202201/863118-20220113164229581-1083087842.png" alt="img"></p>
+<p><strong>5.当退出 synchronized 代码块（解锁时）&#x3D;&#x3D;如果有取值为 null 的锁记录，表示有重入&#x3D;&#x3D;，这时重置锁记录，表示重入计数减一</strong></p>
+<p><img src="https://img2020.cnblogs.com/blog/863118/202201/863118-20220113164240424-1914110054.png" alt="img"></p>
+<p><strong>6.当退出 synchronized 代码块（解锁时）锁记录的值不为 null，这时使用 cas 将 Mark Word 的值恢复给对象头</strong></p>
+<ul>
+<li>成功，则解锁成功</li>
+<li>失败，说明&#x3D;&#x3D;轻量级锁&#x3D;&#x3D;进行了&#x3D;&#x3D;锁膨胀&#x3D;&#x3D;或已经升级为重量级锁，进入&#x3D;&#x3D;重量级锁&#x3D;&#x3D;解锁流程</li>
+</ul>
+<h4 id="6-2-锁膨胀"><a href="#6-2-锁膨胀" class="headerlink" title="6.2.锁膨胀"></a>6.2.锁膨胀</h4><p>如果在尝试加轻量级锁的过程中，CAS 操作无法成功，这时一种情况就是有其它线程为此对象加上了轻量级锁（有竞争），这时需要进行&#x3D;&#x3D;锁膨胀&#x3D;&#x3D;，将轻量级锁变为重量级锁。</p>
+<figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">static</span> <span class="hljs-type">Object</span> <span class="hljs-variable">obj</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Object</span>();     <br><span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">method1</span><span class="hljs-params">()</span> &#123;        <br>    <span class="hljs-keyword">synchronized</span> (obj) &#123;            <span class="hljs-comment">// 同步块</span><br>         &#125;    <br> &#125;<br></code></pre></td></tr></table></figure>
+
+
+
+<p><strong>1.当 Thread-1 进行轻量级加锁时，Thread-0 已经对该对象加了轻量级锁</strong>（<strong>即此时的地址为00</strong>）</p>
+<p>![mag](C:\Users\ASUS\Pictures\Saved Pictures\足球鞋足球装备门户-偶偶足球装备网_files\863118-20220113164319232-1556253267.png)</p>
+<p><strong>2.这时 Thread-1 加轻量级锁失败，进入锁膨胀流程</strong></p>
+<ul>
+<li><strong>即为 Object 对象申请 Monitor 锁，让 Object 指向重量级锁地址</strong></li>
+<li><strong>然后自己进入 Monitor 的 EntryList BLOCKED</strong></li>
+</ul>
+<p><img src="https://img2020.cnblogs.com/blog/863118/202201/863118-20220113164325633-1829234762.png" alt="img"></p>
+<p><strong>3.当 Thread-0 退出同步块解锁时，使用 cas 将 Mark Word 的值恢复给对象头，失败。这时会进入&#x3D;&#x3D;重量级解锁流程&#x3D;&#x3D;</strong></p>
+<ul>
+<li><strong>即按照 Monitor 地址找到 Monitor 对象，</strong></li>
+<li><strong>设置 Owner 为 null，</strong></li>
+<li><strong>唤醒 EntryList 中 BLOCKED 线程</strong></li>
+</ul>
+<h4 id="6-3-自旋优化"><a href="#6-3-自旋优化" class="headerlink" title="6.3.自旋优化"></a>6.3.自旋优化</h4><p>轻量级锁竞争的时候，还可以使用&#x3D;&#x3D;自旋&#x3D;&#x3D;来进行优化，如果当前线程自旋成功（即这时候持锁线程已经退出了同步块，释放了锁），这时当前线程就可以&#x3D;&#x3D;避免阻塞&#x3D;&#x3D;。</p>
+<p><strong>概述</strong>:这是基于在大多数情况下，线程持有锁的时间都不会太长，如果直接挂起操作系统层面的线程可能会得不偿失，毕竟操作系统实现线程之间的切换时需要从用户态转换到核心态，这个状态之间的转换需要相对比较长的时间，时间成本相对较高，因此自旋锁会假设在不久将来，当前的线程可以获得锁，因此虚拟机会让当前想要获取锁的线程做几个空循环(这也是称为自旋的原因)，一般不会太久，可能是50个循环或100循环，在经过若干次循环后，如果得到锁，就顺利进入临界区。如果还不能获得锁，那就会将线程在操作系统层面挂起，这就是自旋锁的优化方式，这种方式确实也是可以提升效率的。最后没办法也就只能升级为重量级锁了。</p>
+<p><strong>自旋重试成功的情况</strong></p>
+<p><img src="https://img2020.cnblogs.com/blog/863118/202201/863118-20220113164336012-1176965962.png" alt="image"></p>
+<p><strong>自旋重试失败的情况</strong></p>
+<p><img src="https://img2020.cnblogs.com/blog/863118/202201/863118-20220113164342354-1400175307.png" alt="image"></p>
+<p><strong>注意：</strong></p>
+<blockquote>
+<p><strong>自旋会占用 CPU 时间，单核 CPU 自旋就是浪费，多核 CPU 自旋才能发挥优势。</strong><br>在 Java 6 之后&#x3D;&#x3D;自旋锁&#x3D;&#x3D;是<strong>自适应的</strong>，比如对象刚刚的一次自旋操作成功过，那么认为这次自旋成功的可能性会高，就多自旋几次；反之，就少自旋甚至不自旋，总之，比较智能。<br><strong>Java 7 之后不能控制是否开启自旋功能</strong></p>
+</blockquote>
+<h4 id="6-4-偏向锁"><a href="#6-4-偏向锁" class="headerlink" title="6.4.偏向锁"></a>6.4.偏向锁</h4><p><strong>概述</strong>:偏向锁是Java 6之后加入的新锁，它是一种针对加锁操作的优化手段，经过研究发现，在大多数情况下，锁不仅不存在多线程竞争，而且总是由同一线程多次获得，因此为了减少同一线程获取锁(会涉及到一些CAS操作,耗时)的代价而引入偏向锁。偏向锁的核心思想是，如果一个线程获得了锁，那么锁就进入偏向模式，此时Mark Word 的结构也变为偏向锁结构，当这个线程再次请求锁时，无需再做任何同步操作，即获取锁的过程，这样就省去了大量有关锁申请的操作，从而也就提供程序的性能。所以，对于没有锁竞争的场合，偏向锁有很好的优化效果，毕竟极有可能连续多次是同一个线程申请相同的锁。但是对于锁竞争比较激烈的场合，偏向锁就失效了，因为这样场合极有可能每次申请锁的线程都是不相同的，因此这种场合下不应该使用偏向锁，否则会得不偿失，需要注意的是，<strong>偏向锁失败后，并不会立即膨胀为重量级锁，而是先升级为轻量级锁。</strong></p>
+<p><strong>偏向状态</strong></p>
+<p><img src="https://img2020.cnblogs.com/blog/863118/202201/863118-20220113164430199-1752355948.png" alt="image"></p>
+<p>&#x3D;&#x3D;轻量级锁&#x3D;&#x3D;在没有竞争时（就自己这个线程），每次重入仍然需要执行 CAS 操作。</p>
+<p>Java 6 中引入了&#x3D;&#x3D;偏向锁&#x3D;&#x3D;来做进一步优化：<br>只有第一次使用 CAS 将线程 ID 设置到对象的 Mark Word 头，之后发现这个线程 ID 是自己的就表示没有竞争，不用重新 CAS。以后只要不发生竞争，这个对象就归该线程所有</p>
+<p><img src="https://img2020.cnblogs.com/blog/863118/202201/863118-20220113164401874-1749287981.png" alt="image"></p>
+<p><img src="https://img2020.cnblogs.com/blog/863118/202201/863118-20220113164407219-595846800.png"></p>
+<p><strong>一个对象创建时：</strong></p>
+<ul>
+<li><strong>如果开启了偏向锁（<code>biased_lock</code> : 默认开启），那么对象创建后（即创建一个对象就有了），markword 值为 0x05 即最后 3 位为 101，这时它的thread、epoch(批量重偏向时使用)、age（分代年龄） 都为 0</strong></li>
+<li><strong>偏向锁是默认是延迟的，不会在程序启动时立即生效，如果想避免延迟，可以加 VM 参数 <code>- XX:BiasedLockingStartupDelay=0</code> 来禁用延迟,-xx:UseBisedLocking禁用偏向锁</strong></li>
+<li><strong>如果没有开启偏向锁，那么对象创建后，markword 值为 0x01 即最后 3 位为 001，这时它的 hashcode、age 都为 0，第一次用到 hashcode 时才会赋值,当创建对象后,调用hashcode()方式时,会将偏向状态转为无锁的普通状态,因为偏向锁状态没有hashcode的值(没有额外的存储空间)</strong></li>
+</ul>
+<h4 id="6-5-撤销偏向状态"><a href="#6-5-撤销偏向状态" class="headerlink" title="6.5.撤销偏向状态"></a>6.5.撤销偏向状态</h4><h4 id="1-调用对象-hashCode"><a href="#1-调用对象-hashCode" class="headerlink" title="1.调用对象 hashCode"></a>1.调用对象 hashCode</h4><p><strong>调用了对象的 hashCode，但偏向锁的对象 MarkWord 中存储的是线程 id，如果调用 hashCode 会导致偏向锁被撤销</strong></p>
+<ul>
+<li>&#x3D;&#x3D;轻量级锁会在锁记录中记录 hashCode&#x3D;&#x3D;</li>
+<li>&#x3D;&#x3D;重量级锁会在 Monitor 中记录 hashCode&#x3D;&#x3D;</li>
+</ul>
+<h4 id="2-其它线程使用对象"><a href="#2-其它线程使用对象" class="headerlink" title="2.其它线程使用对象"></a>2.其它线程使用对象</h4><p>当有其它线程使用偏向锁对象时，会将&#x3D;&#x3D;偏向锁升级为轻量级锁&#x3D;&#x3D;</p>
+<h4 id="3-调用wait-x2F-notify"><a href="#3-调用wait-x2F-notify" class="headerlink" title="3.调用wait&#x2F;notify"></a>3.调用wait&#x2F;notify</h4><h4 id="6-6-批量重偏向"><a href="#6-6-批量重偏向" class="headerlink" title="6.6.批量重偏向"></a>6.6.批量重偏向</h4><p>如果对象虽然被多个线程访问，但没有竞争，这时偏向了线程 T1 的对象仍有机会重新偏向 T2，重偏向会重置对象的 Thread ID</p>
+<p>当&#x3D;&#x3D;撤销偏向锁阈值超过 20 次&#x3D;&#x3D;后，jvm 会这样觉得，我是不是偏向错了呢，于是会在给这些对象加锁时重新偏向至加锁线程</p>
+<h4 id="6-7-批量撤销"><a href="#6-7-批量撤销" class="headerlink" title="6.7.批量撤销"></a>6.7.批量撤销</h4><p>当&#x3D;&#x3D;撤销偏向锁阈值超过 40 次&#x3D;&#x3D;后，jvm 会这样觉得，自己确实偏向错了，根本就不该偏向。于是整个类的所有对象都会变为不可偏向的，新建的对象也是不可偏向的</p>
+<h4 id="6-8-锁消除"><a href="#6-8-锁消除" class="headerlink" title="6.8.锁消除"></a>6.8.锁消除</h4><p><strong>概述</strong>:消除锁是虚拟机另外一种锁的优化，这种优化更彻底，Java虚拟机在JIT编译时(可以简单理解为当某段代码即将第一次被执行时进行编译，又称即时编译)，通过对运行上下文的扫描，去除不可能存在共享资源竞争的锁，<strong>通过这种方式消除没有必要的锁</strong>，可以节省毫无意义的请求锁时间，如下StringBuffer的append是一个同步方法，但是在add方法中的StringBuffer属于一个局部变量，并且不会被其他线程所使用，因此StringBuffer不可能存在共享资源竞争的情景，JVM会自动将其锁消除</p>
+<figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java"><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * 消除StringBuffer同步锁</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">public</span> <span class="hljs-keyword">class</span> <span class="hljs-title class_">StringBufferRemoveSync</span> &#123;<br><br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">add</span><span class="hljs-params">(String str1, String str2)</span> &#123;<br>        <span class="hljs-comment">//StringBuffer是线程安全,由于sb只会在append方法中使用,不可能被其他线程引用</span><br>        <span class="hljs-comment">//因此sb属于不可能共享的资源,JVM会自动消除内部的锁</span><br>        <span class="hljs-type">StringBuffer</span> <span class="hljs-variable">sb</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">StringBuffer</span>();<br>        sb.append(str1).append(str2);<br>    &#125;<br><br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">main</span><span class="hljs-params">(String[] args)</span> &#123;<br>        <span class="hljs-type">StringBufferRemoveSync</span> <span class="hljs-variable">rmsync</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">StringBufferRemoveSync</span>();<br>        <span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> <span class="hljs-variable">i</span> <span class="hljs-operator">=</span> <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">10000000</span>; i++) &#123;<br>            rmsync.add(<span class="hljs-string">&quot;abc&quot;</span>, <span class="hljs-string">&quot;123&quot;</span>);<br>        &#125;<br>    &#125;<br><br>&#125;<br><br></code></pre></td></tr></table></figure>
+
+
+
+<figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">static</span> <span class="hljs-type">int</span> <span class="hljs-variable">x</span> <span class="hljs-operator">=</span> <span class="hljs-number">0</span>;<br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">a</span><span class="hljs-params">()</span> <span class="hljs-keyword">throws</span> Exception &#123;<br>        x++;<br>    &#125;<br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">b</span><span class="hljs-params">()</span> <span class="hljs-keyword">throws</span> Exception &#123;<br>        <span class="hljs-type">Object</span> <span class="hljs-variable">o</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Object</span>();<br>        <span class="hljs-keyword">synchronized</span> (o) &#123;<br>            x++;<br>        &#125;<br>    &#125;<br></code></pre></td></tr></table></figure>
+
+<p>发现a方法和 b方法的运行时间没有什么区别 ， &#x3D;&#x3D;JIT（即时编译器）&#x3D;&#x3D;发现&#x3D;&#x3D;锁对象o 不会逃离临界区&#x3D;&#x3D;，就会默认消除这个锁<br>关闭锁消除优化参数： &#x3D;&#x3D;-XX:-EliminateLocks&#x3D;&#x3D;</p>
+<h3 id="7-wait-x2F-notify机制的原理"><a href="#7-wait-x2F-notify机制的原理" class="headerlink" title="7.wait&#x2F;notify机制的原理"></a>7.wait&#x2F;notify机制的原理</h3><p>7.1 <strong>wait()方法是Object 类的方法，它的作用是使当前执行wait()方法的线程等待</strong>，在wait()所在的代码行处暂停执行，&#x3D;&#x3D;并释放锁&#x3D;&#x3D;，直到接到通知或中断（&#x3D;&#x3D;wait方法是已经有锁才可以调用,否则会抛出异常&#x3D;&#x3D;）</p>
+<p>7.2 notify()方法用来通知那些可能等待该锁的其他线程，如果有多个线程等待，&#x3D;&#x3D;则按照执行wait方法的顺序发出一次性通知&#x3D;&#x3D;（<strong>一次只能通知一个！</strong>），使得等待排在第一顺序的线程获得锁。需要说明的是，执行notify方法后，<strong>当前线程并不会立即释放锁，要等到程序执行完，即退出synchronized同步区域后。</strong></p>
+<p>总结：wait 方法使线程暂停运行，而notify 方法通知暂停的线程继续运行。</p>
+<p>要想正确使用wait&#x2F;notify，一定要注意：<br>wait&#x2F;notify在&#x3D;&#x3D;调用前一定要获得相同的锁&#x3D;&#x3D;，如果在调用前没有获得锁，程序会抛出异常，也就调用不了wait&#x2F;notify；另外，如果获得的不是同一把锁，notify不起作用。</p>
+<figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java">    <span class="hljs-type">Object</span> <span class="hljs-variable">o</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Object</span>();<br>       <span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>(()-&gt;&#123;<br>            <span class="hljs-keyword">synchronized</span>(o)&#123;<br>                System.out.println(<span class="hljs-string">&quot;线程1获取锁...&quot;</span>);<br>                <span class="hljs-keyword">try</span> &#123;<br>                    o.wait();   <span class="hljs-comment">//让线程t1处于等待状态</span><br><br>                &#125; <span class="hljs-keyword">catch</span> (InterruptedException e) &#123;<br>                    e.printStackTrace();<br>                &#125;<br>                System.out.println(<span class="hljs-string">&quot;执行其他代码1...&quot;</span>);<br>            &#125;<br>        &#125;,<span class="hljs-string">&quot;t1&quot;</span>).start();<br>       <span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>(()-&gt;&#123;<br>            <span class="hljs-keyword">synchronized</span>(o)&#123;<br>                System.out.println(<span class="hljs-string">&quot;线程2获取锁...&quot;</span>);<br>                <span class="hljs-keyword">try</span> &#123;<br>                    o.wait();      <span class="hljs-comment">//让线程t2处于等待状态</span><br>                    <br>                &#125; <span class="hljs-keyword">catch</span> (InterruptedException e) &#123;<br>                    e.printStackTrace();<br>                &#125;<br>                System.out.println(<span class="hljs-string">&quot;执行其他代码2...&quot;</span>);<br>            &#125;<br>        &#125;,<span class="hljs-string">&quot;t2&quot;</span>).start();<br>          Thread.sleep(<span class="hljs-number">2000</span>);<br>        System.out.println(<span class="hljs-string">&quot;主线程唤醒其他线程&quot;</span>);<br>        <span class="hljs-keyword">synchronized</span>(o)&#123;<br>           o.notify();  <span class="hljs-comment">//只唤醒其中一个线程(随机唤醒一个执行,另一个还是处于等待状态)</span><br><span class="hljs-comment">//            o.notifyAll();   可以唤醒全部线程</span><br>        &#125;<br>    &#125;<br></code></pre></td></tr></table></figure>
+
+
+
+<p>7.3.<strong>sleep(long n)和wait(long n)的区别</strong></p>
+<ul>
+<li>sleep是Thread的方法,而wait是Object的方法</li>
+<li>sleep不需要强制和synchronized配合使用,但wait需要和synchronized一起用</li>
+<li>sleep在睡眠的同时,不会释放对象锁的,但wait在等待的时候会释放对象锁</li>
+<li>当调用时,线程的状态都是TIME_WAITING</li>
+</ul>
+<p>7.4.wait&#x2F;notify的使用一般性结论:（正确使用）</p>
+<figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">synchronized</span>(obj)&#123;<br>    <span class="hljs-keyword">while</span>(条件不成立)&#123;<br>        obj.wait;<br>   &#125;<br>&#125;<br>  <span class="hljs-keyword">synchronized</span>(obj)&#123;<br>      obj.notifyAll();<br>  &#125;<br><span class="hljs-comment">//如果将while改为if,会产生虚假等待的结果</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="8-同步模式之保护性暂停"><a href="#8-同步模式之保护性暂停" class="headerlink" title="8.同步模式之保护性暂停"></a>8.同步模式之保护性暂停</h3><p>定义:即Guarded Supension,<strong>用在一个线程等待另一个线程的执行结果</strong></p>
+<p>要点:</p>
+<ul>
+<li>有一个结果需要从一个线程传递到另一个线程,让他们关联同一个GuadedObject</li>
+<li>如果有结果不断从一个线程到另一个线程那么可以使用消息队列</li>
+<li>JDK中,join的实现、Future的实现,FutureTast的实现,采用的就是这个模式</li>
+<li>因为要等待另一方的结果,因此归类到同步模式</li>
+</ul>
+<p><img src="https://pic3.zhimg.com/80/v2-09fbbef561d05e885ea92e48198774ca_720w.jpg" alt="img"></p>
+<p>**代码实现:**1.同步之保护性暂停</p>
+<figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">import</span> java.util.*;<br><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * 一个线程等待另一个线程的执行结果</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">public</span> class 保护性暂停 &#123;<br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">main</span><span class="hljs-params">(String[] args)</span> &#123;<br>        <span class="hljs-type">GuardedObject</span> <span class="hljs-variable">guardedObject</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">GuardedObject</span>();<br>        ArrayList&lt;Object&gt; objects = <span class="hljs-keyword">new</span> <span class="hljs-title class_">ArrayList</span>&lt;&gt;();<br><br>        <span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>(()-&gt;&#123;<br>                  System.out.println(<span class="hljs-string">&quot;获取并等待结果&quot;</span>);<br>                      guardedObject.get();<br>            System.out.println(objects.size());<br>            <span class="hljs-keyword">if</span>(objects.size()!=<span class="hljs-number">0</span>)&#123;<br>                <span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> i=<span class="hljs-number">0</span>; i&lt;objects.size(); i++)&#123;<br>                    System.out.println(objects.get(i));<br>                &#125;<br>            &#125;<br>              &#125;,<span class="hljs-string">&quot;t1&quot;</span>).start();<br>              <span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>(()-&gt;&#123;<br>                   <span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> <span class="hljs-variable">i</span> <span class="hljs-operator">=</span> <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">10</span>; i++)&#123;<br>                       objects.add(i);<br>                   &#125;<br>                  System.out.println(<span class="hljs-string">&quot;上传结果&quot;</span>);<br>                   guardedObject.complete(objects);<br><br>              &#125;,<span class="hljs-string">&quot;t2&quot;</span>).start();<br>    &#125;<br>&#125;<br><span class="hljs-keyword">class</span> <span class="hljs-title class_">GuardedObject</span> &#123;<br>    <span class="hljs-keyword">private</span> Object response;<br>    <span class="hljs-comment">//等待执行结果</span><br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">get</span><span class="hljs-params">()</span> &#123;<br>        <span class="hljs-keyword">synchronized</span> (<span class="hljs-built_in">this</span>) &#123;<br>            <span class="hljs-keyword">while</span> (response == <span class="hljs-literal">null</span>) &#123;<br>                <span class="hljs-keyword">try</span> &#123;<br>                    <span class="hljs-comment">//如果没有拿到结果就等待</span><br>                    <span class="hljs-built_in">this</span>.wait();<br>                &#125; <span class="hljs-keyword">catch</span> (InterruptedException e) &#123;<br>                    e.printStackTrace();<br>                &#125;<br>            &#125;<br>        &#125;<br>    &#125;<br><br>    <span class="hljs-comment">//提交结果</span><br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">complete</span><span class="hljs-params">(Object response)</span> &#123;<br>        <span class="hljs-keyword">synchronized</span> (<span class="hljs-built_in">this</span>) &#123;<br>            <span class="hljs-built_in">this</span>.response = response;<br>            <span class="hljs-built_in">this</span>.notifyAll();<br>        &#125;<br><br>    &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p><font color=red>注意:使用了同步模式的保护性暂停,在一个执行还没有执行结束时,就可以对等待结果的线程进行唤醒操作(join的局限性太大了)。</font></p>
+<p>2.优化:增加了延时等待</p>
+<figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java"><span class="hljs-keyword">import</span> java.util.*;<br><span class="hljs-comment">/**</span><br><span class="hljs-comment"> * 一个线程等待另一个线程的执行结果</span><br><span class="hljs-comment"> */</span><br><span class="hljs-keyword">public</span> class 保护性暂停之增加超时 &#123;<br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">static</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">main</span><span class="hljs-params">(String[] args)</span> &#123;<br>        <span class="hljs-type">GuardedObjectStrong</span> <span class="hljs-variable">guardedObject</span> <span class="hljs-operator">=</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">GuardedObjectStrong</span>();<br>        ArrayList&lt;Object&gt; objects = <span class="hljs-keyword">new</span> <span class="hljs-title class_">ArrayList</span>&lt;&gt;();<br>        <span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>(()-&gt;&#123;<br>            System.out.println(<span class="hljs-string">&quot;获取并等待结果&quot;</span>);<br>            guardedObject.get(<span class="hljs-number">1</span>);<br>            System.out.println(objects.size());<br>            <span class="hljs-keyword">if</span>(objects.size()!=<span class="hljs-number">0</span>)&#123;<br>                <span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> i=<span class="hljs-number">0</span>; i&lt;objects.size(); i++)&#123;<br>                    System.out.println(objects.get(i));<br>                &#125;<br>            &#125;<br>        &#125;,<span class="hljs-string">&quot;t1&quot;</span>).start();<br>        <span class="hljs-keyword">new</span> <span class="hljs-title class_">Thread</span>(()-&gt;&#123;<br>            <span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> <span class="hljs-variable">i</span> <span class="hljs-operator">=</span> <span class="hljs-number">0</span>; i &lt;<span class="hljs-number">1000</span>; i++)&#123;<br>                objects.add(i);<br>            &#125;<br>            System.out.println(<span class="hljs-string">&quot;上传结果&quot;</span>);<br>            guardedObject.complete(objects);<br><br>        &#125;,<span class="hljs-string">&quot;t2&quot;</span>).start();<br>    &#125;<br><br>&#125;<br><span class="hljs-keyword">class</span> <span class="hljs-title class_">GuardedObjectStrong</span> &#123;<br>    <span class="hljs-keyword">private</span> Object response;<br><br>    <span class="hljs-comment">//等待执行结果</span><br>    <span class="hljs-comment">//增加延时功能</span><br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">get</span><span class="hljs-params">(<span class="hljs-type">long</span> timeout)</span> &#123;<br>        <span class="hljs-comment">//获取初始时间</span><br>        <span class="hljs-type">long</span> initTime=System.currentTimeMillis();<br>        <span class="hljs-comment">//经历时间</span><br>         <span class="hljs-type">long</span> passTime=<span class="hljs-number">0</span>;<br>        <span class="hljs-keyword">synchronized</span> (<span class="hljs-built_in">this</span>) &#123;<br>            <span class="hljs-keyword">while</span> (response == <span class="hljs-literal">null</span>) &#123;<br>                <span class="hljs-keyword">if</span> (passTime &gt;= timeout) &#123;<br>                    <span class="hljs-keyword">break</span>;<br>                &#125;<br>                    <span class="hljs-keyword">try</span> &#123;<br>                        <span class="hljs-comment">//如果没有拿到结果就等待</span><br>                        <span class="hljs-built_in">this</span>.wait(timeout-passTime);  <span class="hljs-comment">//这样可以避免了虚假唤醒</span><br>                        <span class="hljs-comment">//这不能写timeout的分析:如果等待时间小于timeout就将它唤醒,并且为虚假唤醒</span><br>                        <span class="hljs-comment">//则又要等待timeout时间</span><br>                    &#125; <span class="hljs-keyword">catch</span> (InterruptedException e) &#123;<br>                        e.printStackTrace();<br>                    &#125;<br>                    <span class="hljs-comment">//求经历时间</span><br>                    passTime = System.currentTimeMillis() - initTime;<br>                &#125;<br>            &#125;<br>        &#125;<br><br><br>    <span class="hljs-comment">//提交结果</span><br>    <span class="hljs-keyword">public</span> <span class="hljs-keyword">void</span> <span class="hljs-title function_">complete</span><span class="hljs-params">(Object response)</span> &#123;<br>        <span class="hljs-keyword">synchronized</span> (<span class="hljs-built_in">this</span>) &#123;<br>            <span class="hljs-built_in">this</span>.response = response;<br>            <span class="hljs-built_in">this</span>.notifyAll();<br>        &#125;<br><br>    &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+
+
+
+
+
+
+<h3 id="synchronied和voatlie的区别-synchronied即保证了原子性又保证了可见性（可见性-当数据发生改变时-会强制让其他组件或者程序知晓-从而发生一系列变化）-而voatlie只保证了可见性"><a href="#synchronied和voatlie的区别-synchronied即保证了原子性又保证了可见性（可见性-当数据发生改变时-会强制让其他组件或者程序知晓-从而发生一系列变化）-而voatlie只保证了可见性" class="headerlink" title="synchronied和voatlie的区别:synchronied即保证了原子性又保证了可见性（可见性:当数据发生改变时,会强制让其他组件或者程序知晓,从而发生一系列变化）,而voatlie只保证了可见性"></a>synchronied和voatlie的区别:synchronied即保证了原子性又保证了可见性（可见性:当数据发生改变时,会强制让其他组件或者程序知晓,从而发生一系列变化）,而voatlie只保证了可见性</h3>]]></content>
+  </entry>
+  <entry>
+    <title>对于MySQL你知道多少</title>
+    <url>/2022/09/19/hello-world/</url>
+    <content><![CDATA[<h2 id="关于数据库的那些事情"><a href="#关于数据库的那些事情" class="headerlink" title="关于数据库的那些事情"></a>关于数据库的那些事情</h2><h2 id="1-关于索引的事情"><a href="#1-关于索引的事情" class="headerlink" title="1.关于索引的事情"></a>1.关于索引的事情</h2><h3 id="1-索引的创建"><a href="#1-索引的创建" class="headerlink" title="@1.索引的创建"></a>@1.索引的创建</h3><h3 id="第一种-在create-table-的时候加上约束（隐式创建）"><a href="#第一种-在create-table-的时候加上约束（隐式创建）" class="headerlink" title="第一种:在create table 的时候加上约束（隐式创建）"></a>第一种:在create table 的时候加上约束（隐式创建）</h3><p><strong>隐式的方式创建索引.在声明有主键约束、唯一性约束、外键约束的字段上,会自动的添加相关的索引</strong> </p>
+<ul>
+<li><p><strong>约束</strong>：全称完整性约束，它是关系数据库中的对象，用来存放插入到一个表中一列数据的规则，用来确保数据的准确性和一致性。</p>
+</li>
+<li><p><strong>索引</strong>：数据库中用的最频繁的操作是数据查询，索引就是为了加速表中数据行的检索而创建的一种分散的数据结构。可以把索引类比成书的目录，有目录的肯定比没有目录的书，更方便查找。</p>
+</li>
+</ul>
+<figure class="highlight sql"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs sql"><span class="hljs-keyword">create</span> <span class="hljs-keyword">table</span> t_movie(<br>    id <span class="hljs-type">int</span> <span class="hljs-keyword">primary</span> key auto_increment,<br>    movie_rate <span class="hljs-keyword">unique</span> <span class="hljs-type">varchar</span>(<span class="hljs-number">200</span>),   <br>    movie_name <span class="hljs-type">varchar</span>(<span class="hljs-number">200</span>), <br>    movie_url <span class="hljs-type">varchar</span>(<span class="hljs-number">200</span>),<br>) engine<span class="hljs-operator">=</span>Innodb charset utf8;<br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="第二种-在creat-table的时候直接加上索引-显示创建"><a href="#第二种-在creat-table的时候直接加上索引-显示创建" class="headerlink" title="第二种:在creat table的时候直接加上索引(显示创建)"></a>第二种:在creat table的时候直接加上索引(显示创建)</h3><p><font color=Tan>语法:  索引类型 索引名(字段名)</font></p>
+<p><font color=red>注意:  1.字段名中可以有多个,即组成联合索引。     2. 在声明了唯一性索引的字段,可以添加Null值</font></p>
+<figure class="highlight sql"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs sql"><span class="hljs-keyword">create</span>  <span class="hljs-keyword">table</span> book(<br>book_id  <span class="hljs-type">int</span> auto_increment,<br>book_name  <span class="hljs-type">varchar</span>(<span class="hljs-number">100</span>),<br>info  <span class="hljs-type">varchar</span>(<span class="hljs-number">100</span>),<br>price  <span class="hljs-type">int</span> <span class="hljs-keyword">not</span> <span class="hljs-keyword">null</span>,<br><span class="hljs-keyword">primary</span> key key_index(book id);<br>index  idx_name(book_name,price),<br><span class="hljs-keyword">unique</span> index  info(info)  <br>);<br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="第三种-改变表的结构-索引从无到有的结构"><a href="#第三种-改变表的结构-索引从无到有的结构" class="headerlink" title="第三种:改变表的结构(索引从无到有的结构)"></a>第三种:改变表的结构(索引从无到有的结构)</h3><p><font color=Gold>方式1</font>： <font color=Tan>alter table  表名  drop  索引类型  索引名</font> </p>
+<p><strong>索引的分类:</strong></p>
+<ul>
+<li>普通索引    index</li>
+<li>唯一索引    uniqe</li>
+<li>主键索引    primary </li>
+<li>组合索引</li>
+<li>全文索引</li>
+<li>空间索引</li>
+</ul>
+<figure class="highlight sql"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs sql"><span class="hljs-keyword">alter</span> <span class="hljs-keyword">table</span>  book <span class="hljs-keyword">add</span>  index book_index(book_id);<br><br><span class="hljs-keyword">alter</span> <span class="hljs-keyword">table</span> book <span class="hljs-keyword">add</span> <span class="hljs-keyword">unique</span> index book_uniqueIndex(info);<br><br><span class="hljs-keyword">alter</span> <span class="hljs-keyword">table</span> book <span class="hljs-keyword">add</span> <span class="hljs-keyword">primary</span> key  book_key(price);<br></code></pre></td></tr></table></figure>
+
+<p><font color=Gold>方式2</font>： <font color=Tan>create  index 索引名  on 表名(字段名)</font></p>
+<figure class="highlight sql"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs sql"><span class="hljs-keyword">create</span> <span class="hljs-keyword">table</span> test(<br>book_id  <span class="hljs-type">int</span>,<br>book_name  <span class="hljs-type">varchar</span>(<span class="hljs-number">100</span>),<br>info  <span class="hljs-type">varchar</span>(<span class="hljs-number">100</span>),<br>price  <span class="hljs-type">int</span> <span class="hljs-keyword">not</span> <span class="hljs-keyword">null</span><br>);<br><span class="hljs-keyword">create</span>  index  book_index  <span class="hljs-keyword">on</span> test(book_name);<br></code></pre></td></tr></table></figure>
+
+
+
+
+
+<h3 id="2-查看索引的命令行"><a href="#2-查看索引的命令行" class="headerlink" title="@2.查看索引的命令行"></a>@2.查看索引的命令行</h3><p><font color=Gold>方式一:</font></p>
+<figure class="highlight sql"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs sql"><span class="hljs-keyword">show</span> <span class="hljs-keyword">create</span> <span class="hljs-keyword">table</span> book;<br></code></pre></td></tr></table></figure>
+
+<p><font color=Gold>方式二:</font></p>
+<figure class="highlight sql"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs sql"><span class="hljs-keyword">show</span> index <span class="hljs-keyword">from</span> book;<br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="3-删除主键索引"><a href="#3-删除主键索引" class="headerlink" title="@3.删除主键索引"></a>@3.删除主键索引</h3><p><font color=Gold>方式一</font>：<font color=Tan>语法: alter table  表名  drop  索引类型  索引名</font> </p>
+<figure class="highlight sql"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs sql"><span class="hljs-keyword">alter</span>  <span class="hljs-keyword">table</span> book <span class="hljs-keyword">drop</span> index book_index;<br><span class="hljs-keyword">alter</span> <span class="hljs-keyword">table</span> book <span class="hljs-keyword">drop</span> <span class="hljs-keyword">primary</span> key;<br></code></pre></td></tr></table></figure>
+
+<p><font color=red>注意:  删除索引  添加了auto_increment约束字段的唯一索引不能删除</font></p>
+<p><font color=Gold>方式二</font> :  <font color=Tan>语法: drop 索引类型  索引名 on  表名</font></p>
+<figure class="highlight sql"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs SQL"><span class="hljs-keyword">drop</span> index book_uniqueIndex <span class="hljs-keyword">on</span> book;<br></code></pre></td></tr></table></figure>
+
+<p><font color=red>注意:  删除表中列时,如果要删除的列为索引的组成部分,<br>则该列也会从索引中删除.如果组成索引的所有列都被删除,则整个索引将被删除</font></p>
+<h3 id="4-Mysql8-0新特性"><a href="#4-Mysql8-0新特性" class="headerlink" title="@4.Mysql8.0新特性"></a>@4.Mysql8.0新特性</h3><h4 id="1-支持降序索引-在8-0版本之前创建的仍然是升序索引-使用时进行反向扫描-这大大降低了数据库的效率"><a href="#1-支持降序索引-在8-0版本之前创建的仍然是升序索引-使用时进行反向扫描-这大大降低了数据库的效率" class="headerlink" title="1.支持降序索引  (在8.0版本之前创建的仍然是升序索引,使用时进行反向扫描,这大大降低了数据库的效率)"></a>1.支持降序索引  (在8.0版本之前创建的仍然是升序索引,使用时进行反向扫描,这大大降低了数据库的效率)</h4><p>支持了降序索引,无论是升序还是降序都不会对性能影响太大</p>
+<figure class="highlight sql"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs sql"><span class="hljs-keyword">create</span> <span class="hljs-keyword">table</span>  test1(<br>a <span class="hljs-type">int</span>,<br>b <span class="hljs-type">int</span>,<br>index  test_index(a  <span class="hljs-keyword">asc</span>,b <span class="hljs-keyword">desc</span>)<br>);<br></code></pre></td></tr></table></figure>
+
+<h4 id="2-支持隐藏索引-通过先将索引设置为隐藏索引-再考虑要不要删除索引的方式就是软删除-还可以用于验证某个索引-删除之后的查询性能影响-就可以暂时先隐藏该索引"><a href="#2-支持隐藏索引-通过先将索引设置为隐藏索引-再考虑要不要删除索引的方式就是软删除-还可以用于验证某个索引-删除之后的查询性能影响-就可以暂时先隐藏该索引" class="headerlink" title="2.支持隐藏索引  通过先将索引设置为隐藏索引,再考虑要不要删除索引的方式就是软删除,还可以用于验证某个索引 删除之后的查询性能影响,就可以暂时先隐藏该索引"></a>2.支持隐藏索引  通过先将索引设置为隐藏索引,再考虑要不要删除索引的方式就是软删除,还可以用于验证某个索引 删除之后的查询性能影响,就可以暂时先隐藏该索引</h4><p><font color=Red>注意: 主键不能被设置为隐藏索引.当表中没有显式主键时,表中第一个唯一非空索引会成为隐式主键,也不能设为隐藏索引。当索引被隐藏后它的内容仍然是和正常索引一样实时更新的(即也是会影响DML的)</font></p>
+<p><font color=IndianRed>那怎么创建隐式索引呢?</font></p>
+<p><font color=Gold>方式一</font>：<strong>如果想要设置为隐藏索引,只要在创建的时候在索引后面加一个invisible即可</strong></p>
+<figure class="highlight sql"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs sql"><span class="hljs-keyword">create</span> <span class="hljs-keyword">table</span> test(<br>book_id  <span class="hljs-type">int</span>,<br>book_name  <span class="hljs-type">varchar</span>(<span class="hljs-number">100</span>),<br>info  <span class="hljs-type">varchar</span>(<span class="hljs-number">100</span>),<br>price  <span class="hljs-type">int</span> <span class="hljs-keyword">not</span> <span class="hljs-keyword">null</span><br>index   book_index(book_id)  invisible <br>); <br></code></pre></td></tr></table></figure>
+
+<p><font color=Gold>方式二</font>：<strong>如果想要修改索引的可见性,可以对表的结构进行修改</strong></p>
+<p><font color=Tan>语法: alter table  表名  alter index 索引名  invislble[不可见]&#x2F;visible[可见]</font> </p>
+<figure class="highlight sql"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs sql"><span class="hljs-keyword">alter</span> <span class="hljs-keyword">table</span> test1  <span class="hljs-keyword">alter</span> index  test_index  invisible; <br><span class="hljs-keyword">alter</span> <span class="hljs-keyword">table</span> test1 <span class="hljs-keyword">alter</span> index  test_index visible;<br></code></pre></td></tr></table></figure>
+
+<p><font color=red>注意:  当索引被隐藏时,它的内容仍然是和正常索引一样实时更新的.如果一个索引需要长期被隐藏,那么可以将其删除,因为索引的存在会影响插入、更新和删除的性能</font></p>
+<h3 id="5-哪些情况适合创建索引"><a href="#5-哪些情况适合创建索引" class="headerlink" title="@5.哪些情况适合创建索引"></a>@5.哪些情况适合创建索引</h3><ul>
+<li>字段的数值有唯一性的限制</li>
+<li>业务上具有唯一特性的字段,即使是组合字段,也必须建成唯一索引</li>
+<li>频繁作为where查询条件的字段</li>
+<li>经常用group by和order by的列</li>
+<li>update、delete的where条件列</li>
+<li>distinct字段需要创建索引</li>
+</ul>
+<p><strong>在以上情况创建索引的同时要注意的事项:</strong></p>
+<p>1.多表join连接操作时,创建索引注意事项: 连接表的数量尽量不要超过<font color=red>3张</font>,每增加一张表就相当于增加了一次嵌套的循环,数量级增长会非常快.对用于连接的字段创建索引,并且该字段在多表中类型要一致。</p>
+<p>2.不要以为唯一索引影响了insert速度,这个速度损耗可以忽略,但是提高查找速度是明显的。</p>
+<p>3.对数据按照某个条件进行查询后再进行update或者delete的操作,如果对where字段创建了索引,就能大幅提高效率.原理是因为我们需要先根据where条件列检索出来这条记录,然后再对它进行更新或者删除.如果进行更新的时候,更新的字段是非索引字段,提升的效率会更加明显,这是因为非索引字段更新不需要对索引进行维护</p>
+<p>4.使用列的类型小(该类型表示的数据范围的大小)的创建索引</p>
+<ul>
+<li>数据类型小,在查询时进行的比较操作越快</li>
+<li>数据类型小,索引占用的存储空间就越少,在一个数据页内就可以放下更多的记录,从而减少磁盘I&#x2F;O带来的性能损耗，也就意味着可以把更多的数据页缓存在内存中，从而加快读写效率。</li>
+</ul>
+<p> 5.使用字符串前缀创建索引,字符串越长,索引占用的存储空间越大.取前缀这样既节约了空间,又减少了字符串的比较时间</p>
+<p> 6.区分度高(散列性高)的列适合作为索引：</p>
+<p>列的基数指的是某一列中不重复数据的个数,比方说某个列包含值2,5,8,2,5,8  基数为3,也就是说,在记录数一定的情况下,列的基数越大,该列中值越分散,列的基数越小,该列的值就越集中,可以使用公式select count(distinct left(列名,索引长度))&#x2F;count(*) from 表名计算区分度,越接近1越好,一般超过33%就算是比较高效的索引了,<font color=red>扩展:联合索引把区分度高(散列性高)的列放在前面</font></p>
+<p>#怎么计算不同的长度的选择性呢?<br>select count(distinct left(address,10))&#x2F;count(<em>);  #截取前10个字符的选择度<br>#即根据select count(distinct left(列名,索引长度))&#x2F;count(</em>)的区分度来确定;</p>
+<p>#10.使用最频繁的列放在联合索引的最左侧<br>#11.在多个字段都要创建索引的情况下,联合索引优于单值索引<br>#限制索引的数目<br>#索引的数目不是越多越好,建议单张表索引数目不超过6个,原因是:<br>#1.每个索引都需要占用磁盘块空间,索引越多,需要的磁盘空间就越大<br>#2.索引会影响insert、delete、update等语句的性能,因为表中的数据更改的同时,索引也会进行调整和更新,会造成负担<br>#3.会增加mysql优化器生成执行计划时间,降低查询性能</p>
+<p>#哪些情况不适合创建索引<br>#1.在where中使用不到的字段,不要设置索引<br>#2.数据量小的表最好不要使用索引<br>#3.有大量重复数据的列上不要建立索引<br>#结论:当数据重复度大,高于10%的时候,也就不需要对这个字段使用索引<br>#4.避免对经常更新的表创建过多的索引<br>#5.不建议用无序的值作为索引<br>#如身份证、UUID(在索引比较时需要转为ASCLL,并且插入的时候可能会造成页分裂)、MD5、HASH、无序字符串等<br>#6.删除不再使用或者很少使用的索引<br>#7.不要定义冗余或者重复的索引</p>
+<p>#哪些情况会使索引失效<br>#1.以%开头的Like查询<br>#2.创建了组合索引,没有满足‘最左匹配原则’<br>#3.查询条件中使用了or,并且or的前后条件中有一个列没有索引<br>#4.在索引列上的操作,如函数upper()、or、！&#x3D; (&lt; &gt;),not in,is no null,计算和类型转型(自动或手动)等<br>#创建的联合索引中,务必把范围涉及到的字段写在最后<br>#如  select  * from  user  where name&#x3D;123;(name类型为varchar)<br>#select  * from  user  where  id+1&#x3D;90001;<br>#select * from  where subsring(name,1,3)&#x3D;’abc’;</p>
+<p>#查看系统参数<br>#show [global|session] status like ‘参数’;<br>#一些常用的性能参数如下:<br>#Connections:连接MySQL服务器的次数<br>#Uptime: MySQL服务器的上线时间<br>#Slow_queries:慢查询的次数<br>#innodb_rows_%:查看进行了增删改查的对应的行数<br>#Innodb_rows_read: select查询返回的行数<br>#Innodb_rows_inserted:执行INSERT操作插入的行数.<br>#Innodb_rows_updated:执行UPDATE操作更新的行数.<br>#Innodb_rows_deleted:执行DELETE操作删除的行数.<br>#Com_select:查询操作的次数。<br>#Com_insert:插入操作的次数。对于批量插入的INSERT操作，只累加一次<br>#Com_update:更新操作的次数。<br>#Com_delete:删除操作的次数。<br>#如查看mysql服务器连接的次数<br>show status like ‘Connections’;<br>show status like  ‘Innodb_rows_inserted’;<br>show status like ‘uptime’;<br>show status like ‘slow_queries’;<br>show status like ‘innodb_rows_%’;<br>show status like ‘com_select’;</p>
+<p>#统计SQL的查询成本:last_query_cost  通常是我们评价一个查询的执行效率的一个常用指标,查询得到的值为数据来自多少个数据页<br>#sql查询是一个动态的过程，从页加载的角度来看，我们可以得到以下两点结论:<br>#1.位置决定效率.如果页就在数据库缓冲池中,那么效率是最高的,否则还需要从内存或者磁盘中进行读取,当然针对单个页的读取来说,如果页存在于内存中,会比在磁盘中读取效率高很多.<br>#2.批量决定效率.如果我们从磁盘中对单一页进行随机读.那么效率是很低的(差不多10ms)，而采用顺序读取的方式，批量对页进行读取,平均一页的读取效率就会提升很多,甚至要快于单个页面在内存中的随机读取。<br>#所以说,遇到I&#x2F;o并不用担心,方法找对了,效率还是很高的.我们首先要考虑数据存放的位置,如果是经常使用的数据就要尽量放到缓冲池中,其次我们可以充分利用磁盘的吞吐能力,一次性批量读取数据,这样单个页的读取效率也就得到了提升.</p>
+<p>#定位执行慢的SQL:慢查询日志<br>#MySQL的慢查询日志,用来记录在MySQL中响应时间超过阈值的语句,具体运行时间超过long_query_time值的SQL,则会被记录到慢查询日志中,long_query_time的默认值为10s<br>#默认情况下数据库没有开启慢查询日志,需要我们手动来设置.如果不是调优需要的话,一般不建议启动该参数,因为开启了会对性能多多少少带了一定的影响<br>#查看慢查询日志参数<br>show variables like ‘%slow_query_log’;<br>#开启慢查询日志参数<br>set  global slow_query_log&#x3D;on;<br>#关闭慢查询日志参数<br>set global slow_query_log&#x3D;off;<br>#可以用来查询慢查询日志文件的位置<br>show variables like ‘%slow_query_log%’;<br>#查看慢查询long_query_time的阈值<br>show variables like  ‘%long_query_time%’;<br>#对long_query_time进行修改  注意long_query_time既为全局 又为会话的变量 所以2个都要改<br>set long_query_time&#x3D;1;<br>set global long_query_time&#x3D;1;<br>#补充说明:控制慢查询日志的还有一个系统变量:min_examined_row_limit 意思为扫描过的最少记录数(默认为0) 这个变量和查询执行时间,共同组成了判别了一个查询是否是慢查询的条件.如果查询扫描过的记录数大于等于这个变量的值,并且查询执行时间超过long_query_time 那么这个查询就被记录到慢查询日志中<br>show variables like ‘profiling’;<br>use ism;<br>select * from  user where id&#x3D;2;<br>show profiles;<br>show profile;</p>
+<p>#explain讲解<br>#1.id值小结:<br>#id如果相同,可以认为是一组,从上往下顺序执行<br>#在所有组中,id值越大,优先级越高,越先执行<br>#关注点:id号每个号码,表示一趟独立的查询,一个sql的查询趟数越少越好<br>#2.select_type:select关键字对应的那个查询的类型,确定小查询在整个大查询中的角色<br>#查询语句中不包含’union’或者子查询的查询都算是’simple’类型<br>#对于包含’union’或者’union_all’或者子查询的大查询来说,它是由几个小查询组成的,其中最左边的查询的select_type值为’primary’<br>#对于包含’union’或者’union_all’或者子查询的大查询来说,它是由几个小查询组成的,其中除了最左边的查询,其他的查询为’union’<br>#mysql选择使用临时表来完成’union’查询的去重工作,针对该临时表的查询为’union result’<br>#3.type:代表某个表的执行查询时的访问方法,是一个较为重要的一个指标<br>#4.key_len:实际使用到的索引长度(即:字节数),帮你检测是否充分利用上了索引,’值越大越好’,针对的主要是联合索引</p>
+<p>#关联查询优化<br>#结论:对于内连接来说,查询优化器可以决定谁作为驱动表,谁作为被驱动表出现的.如果表的连接条件中只能有一个字段有索引,则有索引的字段所在的表会被作为被驱动表.在两个表的连接条件都存在索引的情况下,会选择小表作为驱动表,’小表驱动大表’,本质就是减少外层循环的数据数量</p>
+<p>#子查询优化<br>#子查询可以进行select语句的嵌套查询,即一个select查询的结果作为另一个select语句的条件.子查询可以一次性完成很多逻辑上需要多个步骤才能完成的SQL操作.但是子查询的执行效率不高,原因:1.执行子查询时,mysql需要为内层查询语句的查询结果建立一个临时表,然后外层查询语句从临时表中查询记录.查询完毕后,再撤销这些临时表.这样会消耗过多的CPU和IO资源,产生大量的慢查询。2.子查询的结果集存储的临时表,不论是内存临时表还是磁盘临时表都不会存在索引,所以查询性能会受到一定的影响。3.对于返回结果集比较大的子查询,其对查询性能的影响也就越大<br>#在MySQL中,可以使用连接(JOIN)查询来替代子查询.连接查询不需要建立临时表,其速度比子查询要快,如果查询中使用到了索引的话,性能就会更好</p>
+<p>#排序优化<br>问题:在WHERE条件字段上加字段上加索引,但是为什么在ORDER BY字段上还要加索引呢?<br>回答:在MySQL中,支持两种排序方式,分别是FileSort和Index排序<br>#1.index排序中,索引可以保证数据的有序性,不需要再进行排序,效率更高<br>#2.FileSort排序则一般在内存中进行排序,占用CPU较多.如果待排序结果较大,会产生临时文件I&#x2F;O到磁盘进行排序的情况,效率较低<br>优化建议:<br>#1.SQL中,可以在WHERE子句和ORDER By子句中使用索引,目的是在WHERE子句中避免全表扫描,在ORDER BY子句避免使用FileSort排序<br>#2.尽量使用Index完成ORDER BY排序.如果WHERE和ORDER By后面是相同的列就使用单索引列;如果不同就使用联合索引<br>#3.无法使用Index时,需要对FlieSort方式进行调优<br>#WHERE和ORDER BY是可以进行联合索引的,具体要看优化器的选择</p>
+<p>#使用ORDER BY排序时,字段的升序和降序要一致,否则用不了索引!<br>#结论:当[范围条件]和[group by或者order by]的字段出现二选一时,优先观察条件字段的过滤数量,如果过滤的数据足够多,而需要排序的数据并不多时,优先把索引放在范围字段上.反之,一样.</p>
+<p>#filesort算法:双路排序和单路排序<br>#排序的字段如果不在索引列上,则filesort会有两种算法:双路排序(慢,mysql4.1之前)和单路排序(快,mysql4.1之后)<br>#对filesort进行调优:查询的字段字节尽量小一点,太大了会超过默认的1024字节,会使用双路算法,否则会使用单路算法 </p>
+<p>#GROUP BY优化<br>#1.group by使用索引的原则几乎跟order by一致,group by即使没有过滤条件用到索引,也可以直接使用索引<br>#2.group by先排序再分组,遵循索引键的最佳左前缀法则<br>#3.当无法使用索引列,增大max_length_for_sort_data和sort_buffer_size参数的设置<br>#4.where效率高于having,能使用where就不要用having了<br>#5.减少使用order by、group by、distict这些语句比较耗费CPU</p>
+<p>#分页查询优化<br>问题:select * from student limit 2000000,10;  怎么进行优化处理?<br>优化思路一:在索引上完成排序分页操作,最后根据主键关联回原表查询所需要的其他列内容<br>select * from student t,(select id from student order by id limit 2000000,10) a where t.id&#x3D;a.id;<br>先将学生的id值进行排序(这里指的主键是不递增的,乱序的),然后查询<br>优化思路二: 该方案适合用于主键自增的表,可以把limit查询转换为某个位置的查询<br>select * from student where id&gt;2000000 limit 10;</p>
+<p>#优先考虑覆盖索引<br>#什么是覆盖索引?<br>#1.一个索引包含了满足查询结果的数据就叫做覆盖索引<br>#2.索引列+主键  包含select到from之间查询的列</p>
+<p>#覆盖索引的利弊<br>#好处:<br>#1.避免InnoDB表进行索引的二次查询(回表) 避免了对主键的二次查询,减少了IO操作<br>#2.可以把随时IO变成顺序IO加快查询效率  把随机读取的IO变为顺序IO<br>#由于覆盖索引可以减少树的搜索次数,显著提升查询性能,所以使用覆盖索引是一个常用的性能优化手段<br>#弊端:<br>#索引字段的维护  </p>
+<p>#索引条件下推(ICP)<br>#常用于联合索引中,如第一个索引可以正常使用,第二个索引会失效,此时会索引条件下推,先过滤都两个索引的数据再回表操作 如:<br>create index  max_index on student(name,fist,send);<br>select * from student  whrer name&#x3D;’孙中伟’ and fist&#x3D;’%张’ and s&#x3D;’我’;<br>#此时就会用到ICP<br>#ICP的使用条件:<br>#1.ICP可以用于InnoDB和MyISAM表,包括分区表InnoDB和MyISAM表<br>#2.对于InnoDB表,ICP仅用于二级声音<br>#3.当使用覆盖索引时,不支持ICP<br>#4.相关子查询的条件不能使用ICP</p>
+<p>#其他的优化策略<br>#EXISTS和IN的区分<br>select * from  A where cc in(select cc from B);<br>select * from A where exists(select cc from B where B.cc&#x3D;A.cc)<br>#基于小表驱动大表,A表小就用exists,B表小就用in<br>#COUNT(<em>)与COUNT(具体字段)效率<br>问题:在mysql中统计数据表的行数,可以用三种方式:SELECT COUNT(</em>)、SELECT COUNT(1)和SELECT COUNT(具体字段),使用这三者之间的查询效率是怎样的?<br>#环节1:COUNT(<em>)和COUNT(1)都是对所有结果进行COUNT,COUNT(</em>)和COUNT(1)本质没有区别(可能执行时间可能略有差别,不过你还是可以把它俩的执行效率看成是相等的)<br>#环节2:如果是MyISAM存储引擎,统计数据表的行数只需要O(1)的复杂度  </p>
+<h1 id="如果是InnoDB-则是O-n-的复杂度"><a href="#如果是InnoDB-则是O-n-的复杂度" class="headerlink" title="如果是InnoDB,则是O(n)的复杂度"></a>如果是InnoDB,则是O(n)的复杂度</h1><p>#环节3:在InnoDB引擎中,如果采用COUNT(具体字段)来统计数据行数,要尽量采用二级索引.因为聚簇索引包含的信息多</p>
+<p>#关于SELECT(<em>)<br>#在表查询中,建议明确字段.原因是:<br>#1.MySQL在解析的过程中,会通过查询数据字典将</em>按序转换为所有列名,这会大大的耗费资源和时间<br>#2.无法使用覆盖索引</p>
+<p>#LIMIT 1 对优化的影响<br>#1.针对的是会扫描全表的SQL语句,如果你可以确定结果集只有一条,那么加上LIMIT 1的时候,当找到一条结果的时候就不会继续扫描,这样会加快查询速度<br>#2.如果数据表已经对字段建立了唯一索引,那么可以通过索引进行查询,不会全表扫描的话,就不需要加上LIMIT 1了</p>
+<p>select UUID() from dual;</p>
+<p>#第一范式:字段具有原子性<br>#第二范式:不具有部分依赖,都为完全依赖<br>#第三范式:非主属性字段之间不能存在依赖关系</p>
+<p>#反范式化:遵循业务优先的原则,首先满足业务需求,再尽量减少冗余<br>#BCNF范式(巴斯范式):在3NF的基础上消除了主属性对候选键的部分依赖或者传递依赖关系</p>
+<p>#ER模型(实体关系模型)<br>#ER模型中有三要素,分别是实体、属性和关系</p>
+<p>#优化数据库结构<br>#1.拆分表:将一张表拆分为几张小表,冷热数据分离(热数据为操作频繁的数据,冷数据为操作频率低的数据)<br>#2.增加中间表:对于需要经常联合查询的表,建立中间表以提高查询效率.把需要经常联合查询的数据插入中间表中,然后对原来的联合查询改为对中间表的查询,以此提高查询效率<br>#3.增加冗余字段<br>#4.优化数据类型(优先选择最符合的最小的数据类型),使用tinmestamp存储时间(4字节),用decimal代替float和double存储精确浮点数,因为不会丢失精度<br>#5.使用非空约束:在设计字段时,如果业务允许,建议尽量使用非空约束,好处:<br>#1.进行比较和计算时,省去要对NULl值的字段判断是否为空的开销,提高存储效率<br>#2.非空字段也容易创建索引,可以节省空间(每个字段1bit)</p>
+<p>#大表优化<br>#1.限定查询的范围:禁止不带任何限制数据范围条件的查询语句<br>#2.读&#x2F;写分离:主库负责写,从库负责读(主从复制)<br>#3.分库分表:当数据库中数据表过多的时候,可以采用垂直分库,将关联的数据表部署到同一个数据库上</p>
+<h1 id="当数据表中的列过多-可以采用垂直分表的方式-将一张数据表拆分为多个数据表-把经常一起用的列归为同一个表"><a href="#当数据表中的列过多-可以采用垂直分表的方式-将一张数据表拆分为多个数据表-把经常一起用的列归为同一个表" class="headerlink" title="当数据表中的列过多,可以采用垂直分表的方式,将一张数据表拆分为多个数据表,把经常一起用的列归为同一个表"></a>当数据表中的列过多,可以采用垂直分表的方式,将一张数据表拆分为多个数据表,把经常一起用的列归为同一个表</h1><p>#水平分库:将大的数据表按照某个属性维度分拆为不同的小表(最好分库)<br>#常见的数据库分片的两种方案:<br>#1.客户端代理:分片逻辑在应用端,封装在jar包中,通过修改或者封装JDBC层来实现<br>#2.中间件代理:在应用和数据中间加了一个代理层.分片逻辑统一维护在中间件服务中</p>
+<p>#事务的ACID原则:<br>#原子性:事务要么发生到结束,要么就回滚到开始的时候<br>#一致性:事务执行的前后,数据从一个合法性状态变换到另一个合法性状态(是具体业务的合法性,如存款肯定要大于0)<br>#隔离性:一个事务的执行不能被其他事务干扰,即一个事务内部的操作及使用的数据对并发的其他事务是隔离的,并发执行的各个事务之间不能互相干扰<br>#持久性:事务一旦被提交,它对数据库中数据的改变就是永久性的   持久性是通过事务日志来保证的,日志包括了重做日志和回滚日志.当我们对数据修改的时候,首先会将数据库的变化信息记录到重做日志中,然后再对数据库中对应的行进行修改.好处是即使数据库系统崩溃了,数据库重启后也可以找到没有更新到数据库系统中的重做日志,重写执行,从而使事务具有持久性<br>#总结:原子性是基础,隔离性是手段,一致性是约束条件,持久性是目的</p>
+<p>#显示事务<br>#事务的完成过程:<br>#1.开启事务<br>#2.一系列的DML的操作<br>#3.事务结束的状态:提交的状态(COMMIT)、中止的状态(ROLLBACk)<br>#显示事务<br>#使用关键字:start transaction 或者 begin 开启<br>#start transaction后面可以跟:read only(只读操作,临时表除外)&#x2F;read write(可以进行DML 默认状态)&#x2F;with consistent snapshot<br>#可以设置保存点(savepoint),进行回滚的时候可以回滚到保存点然后再完成事务的一系列操作.一个事务可以有多个保存点   savepoint 保存点的名称(创建保存点)   release savepoint 保存点名称(删除保存点)</p>
+<p>#隐式事务<br>show variables like ‘autocommit’; #查看自动提交事务是否开启  默认为ON<br>#如何关闭自动提交?<br>#方式一:<br>set autocommit&#x3D;FLASE;  #针对于DML操作是有效的,对DDL操作无效(即如果关闭了自动提交,DDL操作依然还是有效的)<br>#方式二:我们在autocommit为true的情况下,使用start transaction或者begin开启事务,那么DML操作就不会自动提交数据</p>
+<p>#MySQL中completion_type参数的作用,实际上这个参数有3种可能:<br>#1.completion&#x3D;0,这是默认情况.当我们执行Commit的时候会提交事务,在执行下一个事务时,还需要使用start transction或者begin来开启<br>#2.completion&#x3D;1,这种情况下,当我们提交事务后,相当于执行了Commit and chain,也就是开启一个链式事务,即当我们提交事务之后会开启了一个相同隔离级别的事务<br>#3.completion&#x3D;2,这种情况下commit&#x3D;commit and release,也就是当我们提交后,会自动与服务器断开连接</p>
+<p>#数据的并发问题<br>#1.脏写:对于两个事物SessionA,Session B,如果事务Session A修改了另一个未提交事务Session B修改过的数据,那就意味着发生了脏写(即修改后数据未发生变化)<br>#2.脏读:对于两个事务Session A,Session B,Session A读取了已经被Session B更新但还没有提交的字段.之后若Session B回滚,Session A读取的内容就是临时并且无效的<br>#3.不可重复读:对于两个事务Session A,Session B,Session A读取了一个字段,然后Session B更新了该字段.之后Session A再次读取同一个字段,值就不同了.那就意味着发生了不可重复读<br>#4.幻读:对于两个事务Session A,Session B,Session A从一个表中读取了一个字段,然后Session B在该表中插入了一些新的行.之后,如果Session A再次读取同一个表,就会多出几行</p>
+<p>#SQL中的四种隔离级别<br>#按照严重性排序:脏写&gt;脏读&gt;不可重复读&gt;幻读<br>#隔离级别:read uncommitted:读未提交,不能避免脏读、不可重复读、幻读<br>         #read committed(大多数数据库系统的默认级别):读已提交,可以避免脏读,但不可重复读、幻读问题存在<br>                 #repeatable read:可重复读,可以避免脏读、不可重复读,但幻读存在(MySQL的默认隔离级别)<br>  #serializable:可串行化,确保事务可以从一个表中读取相同的行.在这个事务持续期间,禁止其他事务对该表执行插入、更新和删除操作.所以的并发问题可以避免,但是性能十分低下</p>
+<p>#显示MySQL默认隔离级别<br>show variables like  ‘transaction_isolation’;<br>#设置事务的隔离级别<br>set [Global|Session] transaction isolation level 隔离级别(read committed)<br>#或者用<br>set [Global|Session] transaction_isolation &#x3D;’隔离级别’(read-committed)</p>
+<p>#事务的日志<br>#事务的隔离性是通过锁机制来实现的<br>#而事务的原子性、一致性由事务的redo日志和undo日志来保证<br>#redo log称为重做日志(物理操作,比如页号),提供再写入操作,恢复提交事务修改的页操作,用来保证事务的持久性<br>#undo log称为回滚日志(逻辑操作,sql语句),回滚行记录到某个特定版本,用来保证事务的原子性、一致性</p>
+<p>#InnoDB引擎的事务采用了WAL(Write-Ahead Logging),这种技术的思想就是先写日志在写磁盘,只有日志写入成功了,才算事务提交成功.当发生宕机也可以通过redo log来恢复,保证ACID中的D<br>#redo log分为两部分:1.重做日志的缓冲,保存在内存中,是容失的 2.重做日志文件,保存在硬盘中<br>show variables like ‘%innodb_log_buffer_size%’; </p>
+<p>#刷盘操作:从重做日志缓冲到重做日志文件中的过程,保证数据持久的重要过程<br>#InnoDB给出InnoDB_flush_log_at_trx_commit参数,该参数控制commit提交事务的时候,任何将redo log buffer中的日志刷新到redo log file中,支持三种策略:<br>#设置为0:表示每次事务提交时不进行刷盘操作(系统默认每个1s进行一次重做日志的同步)[不能保证持久性]<br>#设置为1:表示每次事务提交时都将进行同步,刷盘操作(默认)[效率最差]<br>#设置为2:表示每次事务提交时都只把redo log buffer内容写入page cache,不进行同步.由os自己决定什么时候同步到磁盘文件[效率最高,不能保证持久性]<br>show variables  like ‘innodb_flush_log_at_trx_commit’;</p>
+<p>#写入red log buffer过程<br>#补充概念:Mini—Transaction<br>#MySQL把对底层页面中的一次原子访问的过程称之为一个Mini-Transaction,简称mtr,比如向某个索引对应的B+树中插入一条记录的过程就是一个Mini-Transaction.一个所谓的mtr可以包含一组redo日志,每一条语句其实是由若干个mtr组成,每一个mtr又可以包含若干条redo日志   语句(多个mtr(多个redo))</p>
+<p>#redo log flie<br>#1.相关参数:innodb_log_group_home_dir:指定redo log文件组所在的路径,默认为.&#x2F;,表示在数据库的数据目录下<br>#MySQL的默认数据目录下有2个名为ib_logfile0和ib_logfile1的文件<br>#innodb_log_file_in_group:指明redo log flie的个数,默认为2个,最大100个<br>#innodb_log_file_size:单个redo log文件设置的大小,默认为48M,最大值为512G<br>show variables like ‘innodb_log_group_home_dir’;</p>
+<p>#undo log:事务原子性的保证.在事务中更新数据的前置操作其实是要先写入一个undo log<br>#此外,undo log会产生redo log,也就是undo log的产生会伴随这redo log的产生,这是因为und log也需要持久性的保护<br>show variables like ‘innodb_undo_logs’;</p>
+<p>#并发问题的解决方案<br>#方案一:读操作利用多版本并发控制(MVCC),写操作进行加锁<br>#所谓MVCC,就是生成一个ReadView(保证了事务不可以读取到未提交的事务所做的更改)<br>#方案二:读、写操作都加锁<br>#小结:采用MVCC方式的话,读-写操作彼此并不冲突,性能更高<br>     #采用加锁的方式的话,读-写操作彼此需要排队执行,影响性能<br>#一般情况下我们当然愿意采用MVCC来解决读-写操作并发执行的问题,但是业务在某些特殊的情况下,要求必须加锁的方式执行</p>
+<p>#从数据操作的类型划分:读锁和写锁<br>#读锁:也叫共享锁,英文用S表示,针对同一份数据,多个事务的读操作可以同时进行而不会相互影响<br>#写锁:也叫排他锁,英文用X表示,当前写操作没有完成前,它会阻断其他写锁和读锁.这样就能确保在给定的时间里,只有一个事务能执行写入,并防止其他用户读取正在写入的同一个资源<br>#注意:InnoDB引擎读锁和写锁可以加在表上,也可以加在行上,而mysiam只能加表锁<br>#只有读锁X和读锁X可以兼容<br>#MySQL8.0新特性中,在X锁中,即select …for update&#x2F;share添加nowait和skip locked语句,跳过锁等待或者跳过锁定<br>#nowait会立即报错返回  而skip locked也会立即返回,只是返回的结果中不包含被锁定的行 </p>
+<p>#在Insert、Update、delete中都需要加写锁(X)<br>#Insert中,一般情况,新插入一条记录的操作并不加锁,通过一种称之为隐式锁的结构来保护这条新插入的记录在本事务提交前不被别的事务访问</p>
+<p>#从数据操作的粒度划分:表级锁(粒度粗,开销最小)、页级锁、行锁(粒度细,高并发响应)<br>use ISM;<br>select * from book;<br>lock table book write;  #加写锁<br>lock  table book  read;  #加读锁<br>select * from book;<br>update book  set book_name&#x3D;’像我这样’  where book_id&#x3D;1<br>unlock tables;   #释放锁</p>
+<p>#上面测试了锁的类型<br>锁类型 自己可读  自己可写 自己可操作其他表  他人可读 他人可写<br>读锁    是          否          否            是      否,等<br>写锁    是          是         否           否,等      否,等<br>#在InnoDB存储引擎中,一般不会为表添加表级的读锁和写锁,因为存在粒度更细的行锁</p>
+<p>#在InnoDB中,添加行级锁: select … for  share 添加行级的读锁   select …for update 写锁<br>#添加表级锁,lock table 表名 read 添加表级的读锁    lock table 表名 write  写锁<br>#InnoDB支持多粒度锁,即行级锁和表级锁可以同时存在,而意向锁就是一种表锁<br>#意向锁要解决的问题:如果我们给某一行的数据加上了排他锁,数据库会自动给更大的一级空间,比如数据页或者数据表加上意向锁,来告诉其他人这个数据页或者数据表已经有人上过排他锁了,就不用在检查各个行中是否存在锁了<br>#意向锁是存储引擎自己维护的,用户无法手动操作意向锁,意向锁在保证并发性的前提下,实现了行锁和表锁共存且满足事务隔离性的要求</p>
+<p>#意向锁不管是读和写都是兼容的,但是除了IS与S兼容外,意向锁会与共享锁&#x2F;排他锁互斥<br>#元数据锁–表锁</p>
+<p>#InnoDB中的行锁<br>#行锁也称为记录锁,就是锁住某一行.需要的注意的是,MySQL服务器层并没有实现行锁机制,行锁只在存储引擎层实现<br>#优点:锁定力度小,发生锁冲突概率低,可以实现的并发度高<br>#缺点:对于锁的开销比较大,加锁会比较慢,容易出现死锁的情况<br>#1.记录锁:锁住一条记录<br>#2.间隙锁(gap):gap锁的提出仅仅是为了防止插入幻影记录而提出的.虽然有共享gap锁和独占gap锁这样的说法,但是他们起到的作用是相同的,并且加了gap锁,并不会限制其他事务对这条记录锁或者继续加gap锁<br>#例如有id&#x3D;3和8,在8这个行中加入了gap锁,则在(3,8)之间就不能插入数据了<br>#间隙锁是针对于两个或者两个以上的事务解决幻读问题而产生的<br>#如果两个事务都加了间隙锁,并且两个事务都进行了插入不成功的操作,则会发生死锁(表锁不会发生死锁！)<br>select * from book where book_id&#x3D;5 for update;  #对不存在的id加锁(X锁或者S锁)&#x3D;&#x3D;间隙锁<br>insert into book values (2,’wd’,’2’,50);<br>begin;<br>select * from book where book_id&#x3D;6 for update;<br>insert into book values (7,’wd’,’2’,51);<br>rollback;</p>
+<p>#3.临键锁:即可以锁住某条记录,又可以阻止其他事务在该记录前边的间隙插入新记录.事务级别在可重复读的情况下使用的数据库锁,本质是一个记录锁和gap锁的合体<br>select * from book where book_id&lt;&#x3D;9 and book_id&gt;2 for update; #即锁住记录为9的数据,并且在2和9之间加间隙锁(即加了临键锁)</p>
+<p>#4.插入意向锁:一个事务在插入一条记录时需要判断一下插入位置是不是被别的事务加了gap锁(临键锁也包含gap锁),<br>#如果有的话,插入操作需要等待,直到拥有gap锁的那个事务提交.但是InnoDB规定事务在等待的时候也需要在内存中生成一个锁结构,插入意向锁是一种 Gap锁,不是意向锁,在insert操作时产生<br>#插入意向锁之间互不排斥,所以即使多个事务在同一区间插入多条记录,只要记录本身不冲突,那么事务之间就不会出现冲突等待.插入意向锁并不会阻止别的事务继续获取该记录上任何类型的锁</p>
+<p>#页锁:页锁的开销介于表锁和行锁之间,会出现死锁.锁定粒度介于表锁和行锁之间,并发度一般</p>
+<p>#从对待锁的态度划分:乐观锁、悲观锁(看待数据并发的思维方式,不是锁,而是锁的设计思想)<br>#1.悲观锁:共享资源每次只给一个线程使用,其他线程阻塞,用完后再把资源转让给其他线程(Java中synchronized、ReetrantLock等独占锁就是悲观锁思想的实现)<br>#select … for update 悲观锁<br>#注意select … for update语句执行过程中所有扫描的行都会被锁住,因此在MySQL中使用悲观锁必须确定使用了索引,而不是全表扫描,否则将会把整个表锁住(悲观锁的使用,很好的解决了秒杀问题出现超买的问题)<br>#2.乐观锁:不采用数据库自身的锁机制,而是通过程序来实现.在程序上,我们可以采用版本号机制和CAS机制实现.乐观锁适用于多读的应用类型,这样可以提高吞吐量<br>#@1.乐观锁的版本号控制<br>#在表中设计一个版本字段version,第一次读的时候,会获取version字段的取值,会执行update…set version&#x3D;version+1 where version&#x3D;version.如果此时已经有事务对这条事务进行了更改,修改就不会成功.这种方式类似于我们熟悉的SVN版本管理系统,当我们修改了代码进行提价时,首先会检查当前版本号与服务器上的版本号是否一致,如果一致就可以直接提交,如果不一致就需要更新服务器的最新代码,然后再进行提交<br>#@2.乐观锁的时间戳机制(和版本号控制差不多)</p>
+<p>#按加锁的方式:隐式锁和显示锁<br>#隐式锁:即一个事务对新插入的记录可以不显示的加锁(生成一个锁结构),但是由于事务id的存在,相当于加了一个隐式锁,别的事务在对这条记录加S锁或者X锁时,由于隐式锁的存在,会先帮助当前事务生成一个锁结构,然后自己再生成一个锁结构后进入等待状态.是一种延迟加锁的机制,从而减少加锁的数量<br>#显示锁:通过特定的语句进行加锁</p>
+<p>#其他锁之:全局锁<br>#全局锁就是对整个数据库实例加锁.当你需要让整个库处于只读状态的时候,可以使用这个命令,之后其他线程的以下语句会被阻塞:数据库更新语句、数据定义语句和更新类事务的提交语句.全局锁的典型使用场景是:做全库逻辑备份<br>#全局锁的命令:<br>Flush tables with read lock;</p>
+<p>#其他锁之:死锁<br>#概念:两个事务都持有对方需要的锁,并且在等待对方释放,并且双方都不会释放自己的锁</p>
+<p>#产生死锁的必要条件<br>#1.两个或者两个以上事务 2.每个事务都已经持有锁并且申请新的锁<br>#3.锁资源同时只能被同一个事务持有或者不兼容  4.事务之间因为有持有锁和申请锁导致彼此循环等待<br>#死锁的关键在于:两个或者两个以上的Session加锁的顺序不一致</p>
+<p>#如何处理死锁<br>#方式1:等待,直到超时(innodb_lock_wait_timeout&#x3D;50s)<br>#查看超时时间<br>show variables like ‘innodb_lock_wait_timeout’;<br>#即当两个事务互相等待时,当一个事务等待时间超过设置的阈值时,将其回滚,另外事务继续进行<br>#缺点:对于在线服务来说,这个等待时间往往是无法接受的<br>#方式2:使用死锁检测进行死锁处理<br>#方式1检测死锁太过被动,innodb还提供了wait-for graph算法来主动进行死锁检测,每当加锁请求无法立即满足需要进行等待时,wait-for graph算法都会被触发.这是一种比较主动的死锁检测机制,要求数据库保存锁的信息链表和事务等待链表两部分信息<br>#死锁检测的原理是构建一个以事务为顶点、锁为边的有向图,判断有向图是否存在环,存在即有死锁<br>#缺点:每个新的被阻塞的线程,都要判断是不是由于自己的加入导致了死锁,这个操作时间复杂度为O(n)</p>
+<p>#如何解决:方式一:关闭死锁检测,但是意味着可能会出现大量的超时,会导致业务有损<br>         #方式二:控制并发访问的数量.比如在中间件中实现对于相同行的更新,在进行引擎之前排队,这样在innodb内部就不会有大量的死锁检测工作 </p>
+<p>#锁的内存结构<br>#结构解析<br>#1.锁所在的事务信息:无论是表锁还是行锁,都是事务执行过程中生成的,哪个事务生成了这个锁结构,这里就记录这个事务的信息,此锁的事务信息在内存结构中这是一个指针,通过指针可以找到内存中关于该事务的更多信息<br>#2.索引信息:对于行锁,需要记录一下加锁的记录是属性哪一个索引的.这里也是一个指针<br>#3.表锁&#x2F;行锁信息<br>#表锁结构和行锁结构在这个位置的内容是不同的<br>#表锁:记载着是对哪个表加的锁,还有其他的一些信息<br>#行锁:记录了三个重要的信息:Space ID:记录所在表空间   Page Number:记录所在的页号  n_bits:对于行锁来说,一条记录就对应着一个比特位,一个页面中包含很多记录,用不同的比特位来区分到底是哪一个记录加了锁<br>#n_bits的值一般都比页面中记录条数多一些.主要是为了之后在页面中插入了新记录后也不至于重新分配锁结构<br>#type_mode分为三部分:lock_mode,lock_type,rec_lock_type<br>#lock_mode:锁模式(区分是X锁还是S锁):IS,IX,S,X,AUTO-INC锁<br>#lock_type:锁类型(表锁和行锁)<br>#rec_lock_type(具体锁的类型)next-key锁,gap锁,记录锁,临键锁等</p>
+<p>#锁监控<br>#关于MySQL锁的监控,我们一般可以通过检查InnoDB_row_lock等状态变量来分析系统上的行锁的争夺情况<br>show status like ‘innodb_row_lock%’;<br>#其他监控方法:我们把MySQL事务和锁的信息记录在information_schema库中,在5.7之前涉及到的三张表分别是InnoDB_Trx、InnoDB_LOCKs和InnoDB_lock_waits<br>#后面用performance_schema.data_locks和performance_schema.data_lock_waits代替了InnoDB_LOCKs和InnoDB_lock_waits<br>use information_schema;<br>show tables;<br>select * from InnoDB_Trx;<br>select *from performance_schema.data_locks;<br>select * from performance_schema.data_lock_waits;</p>
+<p>#多版本并发控制<br>#1.MVCC:通过数据行的多个版本管理来实现数据库的并发控制<br>#2.快照读与当前读<br>#2.1快照读:又叫一致性读,读取的是快照数据.不加锁的简单的Select都属于快照读,快照读是为了提高并发性的考虑,实现是基于MVCC,很多情况下,避免了加锁操作,降低了开销<br>#2.2当前读:当前读取的是最新的版本,读取时还要保证其他事务并发不能修改当前记录,会对读取的记录加锁</p>
+<p>#隐藏字段、Undo Log版本链<br>#聚簇索引记录中都包含两个必要的隐藏列:1.trx_id:每次一个事务对某条聚簇索引记录进行改动时,都会把事务的事务id赋值给trx_id隐藏列<br>#2.roll_pointer:每次对某条聚簇索引记录进行改动时,都会把旧的版本写到undo日志中,然后这个隐藏列就相当于一个指针,可以通过它来找到该记录修改前的信息</p>
+<p>#MVCC实现原理之ReadView<br>#什么是ReadView?就是事务A在使用MVCC机制进行快照读操作时产生的读视图,当事务启动时,会生成一个快照,InnoDB为每个事务构造了一个数组,用来记录并维护系统当前活跃事务的id(启动了但是还没有提交)<br>#ReadView中主要包含4个比较重要的内容:<br>#1.create_trx_id:创建这个ReadView的事务id(只有增删改才会为事务分配事务id,否则在一个只读的事务id默认为0)<br>#2.trx_ids:表示在生成ReadView时当前系统中活跃的读写事务的事务id列表<br>#3.up_limit_id:活跃的事务中最小的事务id<br>#4.low_limit_id:最大事务id中应该分配给下一个事务的id值(即最大事务id+1)</p>
+<p>#MVCC整体操作流程<br>#1.首先获取事务自己的版本号,也就是事务ID<br>#2.获取ReadView<br>#3.查询得到的数据,然后与ReadView中的事务版本号进行比较<br>#4.如果不符合ReadView规则,就需要从Undo log中获取历史快照(某个版本的数据对当前事务不可见的话,那就顺着版本链找到下一个版本的数据,继续按照上边的步骤判断,以此类推.如果最后一个版本也不可见的话,那么就意味着该条记录找不见)<br>#5.最后返回符号规则的数据</p>
+<p>#在不同隔离级别下,ReadView的生成情况:在读已提交隔离级别中,同样的查询语句都会重新获取一次ReadView,这时如果ReadView不同,就可能产生不可重复读或者幻读的情况<br>#在可重复读的隔离级别下,一个事务只有在第一次Select这个语句的时候会获取一次ReadView,而后面的Select操作都会复用这个ReadView,故不会出现不可重复读或者幻读的情况</p>
+<p>#MVCC可以解决:<br>#1.读写之间阻塞的问题:通过MVCC可以让读写互相不阻塞,即读不阻塞写,写不阻塞读,提高并发处理能力<br>#2.降低了死锁的概率:MVCC采用了乐观锁的方式,读取数据时并不需要加锁,对于写操作,也只锁定必要的行<br>#3.解决了快照读的问题:当我们查询数据库在某个时间点的快照时,只能看到这个时间点之前事务提交更新的结果,而不能看到这个时间点之后事务提交的更新结果</p>
+<p>#其他日志<br>#日志的类型:分为二进制日志、错误日志、通用查询日志和慢查询日志.MySQL 8又新增了两种支持的日志:中继日志和数据定义语句日志<br>#作用:1.慢查询日志:记录所有执行时间超过long_query_time的所有查询,方便优化<br>#2.通用查询日志:记录所有连接的起始时间和终止时间,以及连接发送给数据库器的所有指令(可以还原操作时的具体场景)<br>#3.错误日志:记录MySQL服务的启动、运行或停止MySQL服务时出现的问题<br>#4.二进制日志:记录所有更改数据的语句,可以用于主从服务器之间的数据同步,以及服务器遇到故障时数据的无损失恢复<br>#5.中继日志:用于主从服务器架构中,从服务器用来存放主服务器二进制日志内容的一个中间文件.从服务器通过读取中继日志的内容,来同步主服务器上的操作<br>#6.数据定义语句日志:记录数据定义语句执行的元数据操作<br>#即主服务器更改内容存放到二进制文件中,从服务器通过读取二进制文件,存放到中继日志中,然后读取中继日志进行主从复制</p>
+<p>#除二进制日志外,其他日志都是文本文件.默认情况下,所有日志创建于MySQL数据目录中</p>
+<p>#日志的弊端:<br>#1.日志功能会降低MySQL数据库的性能(花费很多时间记录日志)<br>#2.日志会占用大量的磁盘空间.对于用户非常大、操作非常频繁的数据库,日志文件需要的存储空间设置比数据库文件需要的存储空间还要大</p>
+<p>#查看通用查询日志的参数情况(开启状态(默认为不开启)和文件位置)<br>show  variables like ‘%general%’;<br>show variables like ‘general_log%’;<br>#错误日志是默认开启的,并且不能关闭<br>#查看错误日志的相关参数<br>show variables like ‘log_err%’;</p>
+<p>#二进制日志(bin log)<br>#也叫变更日志.它记录了数据库所有执行的DDL和DML等数据库更新事件的语句,但是不包含没有修改任何数据的语句(如数据查询语句select、show等),它以事件形式记录保持在二进制文件中<br>#主要应用场景:<br>#1.用于数据恢复,如果MySQL数据库意外停止,可以通过二进制日志文件来查看用户执行了哪些操作,对数据库服务器文件做了哪些修改,然后根据二进制文件中的记录来恢复数据库服务器<br>#2.用于数据复制,由于日志的延续性和时效性,主机把它的二进制日志传递给从机来达到主从数据一致性的目的</p>
+<p>#MySQL数据库的数据备份、主备、主主、主从都离不开二进制文件,需要依靠二进制文件来同步数据,保证数据一致性<br>#查看二进制日志文件的默认参数(默认是开启的)<br>show variables like ‘log_bin%’;<br>#日志文件最好和数据库文件分开！</p>
+<p>#查看当前二进制日志文件列表以及大小<br>show binary logs;<br>#查看binlog日志文件(全部文件内容)的内容信息<br>show binlog events;<br>#查看指定文件的内容信息(在这里为binlog.000043)<br>show binlog events in ‘binlog.000050’;<br>#生成一个存储将要恢复数据的信息<br>flush logs;<br>#查看binlog的默认格式(默认为ROW格式),除此之外,binlog还有2种格式,分别为Statement和Mixed<br>show variables like  ‘binlog_format’;<br>use ISM;<br>show tables;<br>select * from book;<br>insert into book VALUES(11,’我的’,’你的’,1111),(12,’我的’,’你的’,101),(12,’我的’,’你的’,11;<br>#可以使用binlog进行数据的恢复</p>
+<p>#删除二进制日志<br>#MySQL的二进制文件可以配置自动删除,同时MySQL也提供了安全的手动删除二进制文件的方法<br>#1.Purge master  logs:删除指定日志文件<br>#语法如下:Purge{master|binary} logs to ‘指定日志文件名’<br>         #Purge{master|binary} logs before ‘指定日期’<br>#2.reset master:删除所有二进制日志文件<br>#使用了reset maser语句,清空所有的binlog日志,MySQL会重新创建二进制文件,新的日志文件扩展名将重新从000001开始编号,慎用!</p>
+<p>#binlog与redolog对比<br>#1.redo log是物理日志,记录内容是’在某个数据页上做了什么修改’,属于InnoDB存储引擎层产生的<br>#2.而binlog是逻辑日志,记录内容是语句的原始逻辑,类似于’给ID&#x3D;2这一行的c字段加1’,属于MySQL Server层<br>#3.虽然它们都属于持久化的保证,但是侧重点不同:<br>#redo log让InnoDB存储引擎拥有了崩溃恢复能力<br>#binlog保证了MySQL集群架构的数据一致性</p>
+<p>#两阶段提交<br>#在执行更新语句过程,以基本的事务为单位,redo log在事务执行过程中可以不断写入,而binlog只有在提交事务时才写入,所以redo log与binlog的写入时机不一样</p>
+<p>#使用两阶段提交后(即将redo log分为2个阶段,为prepare阶段和commit阶段,而binlog在redo log阶段之前),这样写入binlog时发生异常也不会影响,因为MySQL根据redo log日志恢复数据时,发现redo log还处于prepare阶段,并且没有对应binlog日志.就会回滚该事务,从而有效的解决了主从数据不一致的情况</p>
+<p>#另一个场景,redo log设置commit阶段发生异常,那会不会回滚事务呢?<br>#并不会回滚事务,当检测到redo log已经commit或者写入了binlog的时候,事务都会正常的提交</p>
+<p>#中继日志<br>#中继日志只在主从服务器架构的从服务器上存在.为了保证数据的一致性,主服务器将内容写二进制文件,从服务器读取中继日志保证数据的一致性</p>
+<p>#主从复制的作用:1.读写分离;2.数据备份;3.具有高可用性</p>
+<p>#主从复制的原理:三个线程问题:<br>#1.二进制日志转储线程:是一个主库线程.当从库线程连接的时候,主库可以将二进制日志发送给从库,当主库读取事情的时候,会在二进制文件(Binlog)上加锁,读取完成之后,再将锁释放掉<br>#2.从库I&#x2F;O线程:会连接到主库,向主库发送请求更新Binlog.这时从库的I&#x2F;O线程就可以读到主库的二进制日志转储线程发送的Binlog更新部分,并且拷贝到本地的中继日志<br>#3.从库SQL线程会读取从库中的中继日志,并且执行日志中的事件,将从库中的数据与主库保持同步</p>
+<p>#复制三步骤:<br>#步骤1:Master(主机)将写操作记录到二进制文件.这些记录叫做二进制日志事件<br>#步骤2:Slave(从机)将主机的二进制拷贝到它的中继日志中<br>#步骤3:从机重做中继日志中的事件,将改变应用到自己的数据库中.MySQL复制是异步的并且串行化的,而且重启后从接入点开始复制<br>#复制的问题:最大的问题就是延时</p>
+<p>#复制的基本原则:1.每个从机只有一个主机  2.每个从机只能有唯一的服务器ID   3.每个主机可以有多个从机<a href="https://hexo.io/docs/one-command-deployment.html">https://hexo.io/docs/one-command-deployment.html</a>)</p>
+]]></content>
+      <categories>
+        <category>数据库</category>
+      </categories>
+      <tags>
+        <tag>数据</tag>
+      </tags>
+  </entry>
+</search>
