@@ -395,17 +395,10 @@ body {
 	/* 	max-width: 90%; */
 }
 
-/* 链接 */
-a {
-	color: #4183C4;
-	text-decoration: none;
-}
 
-/* a链接悬空 */
-a:hover {
-	background-color: #d1ff79;
-	color: #000;
-}
+
+
+
 
 /* 标题 */
 h1,
@@ -547,7 +540,7 @@ blockquote:before {
 .CodeMirror-lines {
 	padding-left: 4px;
         /*使用本地url，我这里在themes目录下新建了一个image文件夹，将图片放到里面即可*/  
-	background: url(image/艾米利亚.png) no-repeat;
+	background: url(img/晚上好.png) no-repeat;
 	background-position: 100% 102%;
 	background-size: 15%;
 	background-attachment: scroll;
