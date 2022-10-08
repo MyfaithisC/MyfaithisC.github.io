@@ -7,130 +7,130 @@
 <p>的内存和网络带宽,既然可以使用单线程来实现，就使用单线程了! 所以就使用了单线程了 !</p>
 <p>Redis是C语言写的,官方提供的数据为 100000+的QPS,完全不比同样是使用key-vale的Memecache差！</p>
 <h3 id="Redis为什么单线程还怎么快"><a href="#Redis为什么单线程还怎么快" class="headerlink" title="Redis为什么单线程还怎么快?"></a>Redis为什么单线程还怎么快?</h3><ol>
-<li>误区1:&#x3D;&#x3D;高性能的服务器一定是多线程的&#x3D;&#x3D;</li>
+<li>误区1:<font color=yellow>高性能的服务器一定是多线程的</font></li>
 </ol>
-<p>2.误区2:&#x3D;&#x3D;多线程(CPU上下文会切换!)一定比单线程效率高!&#x3D;&#x3D;</p>
+<p>2.误区2:<font color=yellow>多线程(CPU上下文会切换!)一定比单线程效率高!</font></p>
 <h3 id="核心-redis是将所有的数据全部放在内存中的-所以说使用单线程去操作效率就是最高的"><a href="#核心-redis是将所有的数据全部放在内存中的-所以说使用单线程去操作效率就是最高的" class="headerlink" title="核心:redis是将所有的数据全部放在内存中的,所以说使用单线程去操作效率就是最高的,"></a>核心:redis是将所有的数据全部放在内存中的,所以说使用单线程去操作效率就是最高的,</h3><h4 id="多线程-CPU上下文会切换-耗时的操作-，对于内存系统来说-如果没有上下文切换效率就是最高的-多次读写都是在"><a href="#多线程-CPU上下文会切换-耗时的操作-，对于内存系统来说-如果没有上下文切换效率就是最高的-多次读写都是在" class="headerlink" title="多线程(CPU上下文会切换:耗时的操作)，对于内存系统来说,如果没有上下文切换效率就是最高的! 多次读写都是在"></a>多线程(CPU上下文会切换:耗时的操作)，对于内存系统来说,如果没有上下文切换效率就是最高的! 多次读写都是在</h4><h4 id="一个CPU上的-在内存情况下-这个就是最佳的方案"><a href="#一个CPU上的-在内存情况下-这个就是最佳的方案" class="headerlink" title="一个CPU上的,在内存情况下,这个就是最佳的方案!"></a>一个CPU上的,在内存情况下,这个就是最佳的方案!</h4><h2 id="2-五大基本数据类型"><a href="#2-五大基本数据类型" class="headerlink" title="2.五大基本数据类型"></a>2.五大基本数据类型</h2><h3 id="1-String字符串类型详解"><a href="#1-String字符串类型详解" class="headerlink" title="1.String字符串类型详解"></a>1.String字符串类型详解</h3><ul>
-<li><p>get key vlaue &#x3D;&#x3D;设置键和值&#x3D;&#x3D;</p>
+<li><p>get key vlaue <font color=yellow>设置键和值</font></p>
 </li>
-<li><p>exist key &#x3D;&#x3D;查看是否有这个键&#x3D;&#x3D;</p>
+<li><p>exist key <font color=yellow>查看是否有这个键</font></p>
 </li>
-<li><p>expire 键 时间 &#x3D;&#x3D;让这个键在多少时间失效  (可以设置一个定时失效功能,比如验证码或者二维码等)&#x3D;&#x3D;</p>
+<li><p>expire 键 时间 <font color=yellow>让这个键在多少时间失效  (可以设置一个定时失效功能,比如验证码或者二维码等)</font></p>
 </li>
-<li><p>setex(set with expire) &#x3D;&#x3D;设置值并设置过期时间&#x3D;&#x3D;</p>
+<li><p>setex(set with expire) <font color=yellow>设置值并设置过期时间</font></p>
 </li>
-<li><p>setnx(set with noexit) &#x3D;&#x3D;设置一个不存在的键的值&#x3D;&#x3D;</p>
+<li><p>setnx(set with noexit) <font color=yellow>设置一个不存在的键的值</font></p>
 </li>
-<li><p>ttl 键 &#x3D;&#x3D;查看这个键还有多少失效&#x3D;&#x3D;   </p>
+<li><p>ttl 键 <font color=yellow>查看这个键还有多少失效</font></p>
 </li>
-<li><p>keys *&#x3D;&#x3D;查看所有的键&#x3D;&#x3D;  </p>
+<li><p>keys *<font color=yellow>查看所有的键</font></p>
 </li>
-<li><p>append 键 +值  &#x3D;&#x3D;在这个键的末尾追加值(如果这个键没有的话就会自动创建)&#x3D;&#x3D;</p>
+<li><p>append 键 +值  <font color=yellow>在这个键的末尾追加值(如果这个键没有的话就会自动创建)</font></p>
 </li>
-<li><p>incr 键 &#x3D;&#x3D;让这个键的值自增(incrby  键 数目 自增多少数目)&#x3D;&#x3D;  </p>
+<li><p>incr 键 <font color=yellow>让这个键的值自增(incrby  键 数目 自增多少数目)</font></p>
 </li>
-<li><p>decr 键  &#x3D;&#x3D;让这个键的值自减&#x3D;&#x3D;</p>
+<li><p>decr 键  <font color=yellow>让这个键的值自减</font></p>
 </li>
-<li><p>getrange 键 start and end &#x3D;&#x3D;取开始和结尾的值&#x3D;&#x3D;  </p>
+<li><p>getrange 键 start and end <font color=yellow>取开始和结尾的值</font> </p>
 </li>
-<li><p>setrange 键  &#x3D;&#x3D;第几个值  要替换的结果  替换字符串&#x3D;&#x3D;</p>
+<li><p>setrange 键  <font color=yellow>第几个值  要替换的结果  替换字符串</font></p>
 </li>
-<li><p>mset &#x3D;&#x3D;可以同时设置多个键和值&#x3D;&#x3D;</p>
+<li><p>mset <font color=yellow>可以同时设置多个键和值</font></p>
 </li>
-<li><p>mget &#x3D;&#x3D;可以同时获取多的值&#x3D;&#x3D;</p>
+<li><p>mget <font color=yellow>可以同时获取多的值</font></p>
 </li>
 </ul>
-<h4 id="扩展-对象"><a href="#扩展-对象" class="headerlink" title="扩展:对象"></a>扩展:对象</h4><p>set user:1{name:zhangsan,age:3)  &#x3D;&#x3D;设置一个user:1 对象 值为  json字符串来保存一个对象!&#x3D;&#x3D;</p>
-<p>&#x3D;&#x3D;这里的key是一个巧妙的设计&#x3D;&#x3D;: user:{id}:{filed}  ,如此设计在Redis中是完全OK的</p>
+<h4 id="扩展-对象"><a href="#扩展-对象" class="headerlink" title="扩展:对象"></a>扩展:对象</h4><p>set user:1{name:zhangsan,age:3)  <font color=yellow>设置一个user:1 对象 值为  json字符串来保存一个对象!</font></p>
+<p><font color=yellow>这里的key是一个巧妙的设计</font>: user:{id}:{filed}  ,如此设计在Redis中是完全OK的</p>
 <figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java">mest user:<span class="hljs-number">1</span>:name zhangsan  user:<span class="hljs-number">1</span> age <span class="hljs-number">2</span><br></code></pre></td></tr></table></figure>
 
-<p>getset &#x3D;&#x3D;先get后set&#x3D;&#x3D;</p>
+<p>getset <font color=yellow>先get后set</font></p>
 <p>String类似的使用场景:value除了是我们的字符串还可以是我们的数字！</p>
-<p>String字符串类型可能会用的&#x3D;&#x3D;场景&#x3D;&#x3D;:</p>
+<p>String字符串类型可能会用的<font color=yellow>场景</font>:</p>
 <ul>
-<li>&#x3D;&#x3D;计数器&#x3D;&#x3D;</li>
-<li>&#x3D;&#x3D;统计多单位的数量&#x3D;&#x3D;</li>
-<li>&#x3D;&#x3D;粉丝数&#x3D;&#x3D;</li>
-<li>&#x3D;&#x3D;对象缓存存储&#x3D;&#x3D;</li>
+<li><font color=yellow>计数器</font></li>
+<li><font color=yellow>统计多单位的数量</font></li>
+<li><font color=yellow>粉丝数</font></li>
+<li><font color=yellow>对象缓存存储</font></li>
 </ul>
 <h3 id="2-List列表类型详讲"><a href="#2-List列表类型详讲" class="headerlink" title="2.List列表类型详讲"></a>2.List列表类型详讲</h3><ul>
-<li>lpush list one &#x3D;&#x3D;(将一个值或者多个值,插入到列表头部(左))&#x3D;&#x3D;</li>
-<li>rpush list right&#x3D;&#x3D;(将一个值或者多个值,插入到列表尾部(右))&#x3D;&#x3D;</li>
-<li>lrange list 0 -1 &#x3D;&#x3D;获取list中的值&#x3D;&#x3D;</li>
-<li>lpop &#x3D;&#x3D;移除左边的值&#x3D;&#x3D;  rpop &#x3D;&#x3D;移除右边的值&#x3D;&#x3D;</li>
-<li>lindex list 下标(从0开始的)  &#x3D;&#x3D;获取索引下标对应的值&#x3D;&#x3D;</li>
-<li>llen list  &#x3D;&#x3D;返回列表的长度&#x3D;&#x3D;</li>
-<li>lrem list (个数)  特定的值  &#x3D;&#x3D;移除list列表中特定的值&#x3D;&#x3D;</li>
-<li>ltrim list  start end &#x3D;&#x3D;截取从start到end中值(索引为小标0开始)&#x3D;&#x3D;</li>
-<li>rpoplpush &#x3D;&#x3D;将list中最后一个值移除到另外一个列表中(如果这个列表不存在则会创建)&#x3D;&#x3D;</li>
-<li>lset list 下标 值  &#x3D;&#x3D;将列表中指定的下标值替换为给定的值（更新操作）如果list不存在则会报错,存在的话会进行更新操作&#x3D;&#x3D;</li>
-<li>linsert  lsit  list中的某个具体的值  after或者before  要插入的值   &#x3D;&#x3D;在list中的某个具体的值中向前或者向后插入要插入的值&#x3D;&#x3D;</li>
+<li>lpush list one <font color=yellow>(将一个值或者多个值,插入到列表头部(左))</font></li>
+<li>rpush list right<font color=yellow>将一个值或者多个值,插入到列表尾部(右))</font></li>
+<li>lrange list 0 -1 <font color=yellow>获取list中的值</font></li>
+<li>lpop <font color=yellow>移除左边的值</font>  rpop <font color=yellow>移除右边的值</font></li>
+<li>lindex list 下标(从0开始的)  <font color=yellow>获取索引下标对应的值</font></li>
+<li>llen list <font color=yellow>返回列表的长度</font></li>
+<li>lrem list (个数)  特定的值  <font color=yellow>移除list列表中特定的值</font></li>
+<li>ltrim list  start end <font color=yellow>截取从start到end中值(索引为小标0开始)</font></li>
+<li>rpoplpush <font color=yellow>将list中最后一个值移除到另外一个列表中(如果这个列表不存在则会创建)</font></li>
+<li>lset list 下标 值  <font color=yellow>将列表中指定的下标值替换为给定的值（更新操作）如果list不存在则会报错,存在的话会进行更新操作</font></li>
+<li>linsert  lsit  list中的某个具体的值  after或者before  要插入的值  <font color=yellow>在list中的某个具体的值中向前或者向后插入要插入的值</font></li>
 </ul>
 <h4 id="小结"><a href="#小结" class="headerlink" title="小结"></a>小结</h4><p>1.他实际上是一个链表,before Node after ,left ,right 都可以插入值<br>2.如果key不存在,创建新的链表<br>3.如果key存在,新增内容<br>4.如果移除了所有值,空链表,也代表不存在<br>5.在两边插入或者改动值,效率最高! 中间元素,相对来说效率会低一点</p>
-<p>&#x3D;&#x3D;消息排队！ 消息队列(Lpush Rpop) ，栈(LPush Lpop)&#x3D;&#x3D;</p>
+<p><font color=yellow>消息排队！ 消息队列(Lpush Rpop) ，栈(LPush Lpop)</font></p>
 <h3 id="3-Set集合类型详讲"><a href="#3-Set集合类型详讲" class="headerlink" title="3.Set集合类型详讲"></a>3.Set集合类型详讲</h3><ul>
-<li>sadd  set  值  &#x3D;&#x3D;添加一个值到set集合中&#x3D;&#x3D;</li>
-<li>smembers set &#x3D;&#x3D;展示所有set集合中的值&#x3D;&#x3D;</li>
-<li>sismember  set  值  &#x3D;&#x3D;查看set集合中是否有这个值&#x3D;&#x3D;</li>
-<li>scard set   &#x3D;&#x3D;查看set集合中有多少个元素&#x3D;&#x3D;</li>
-<li>srem set 值  &#x3D;&#x3D;移除指定的值&#x3D;&#x3D;</li>
-<li>srandmember set[个数]   &#x3D;&#x3D;随机抽取set集合中元素[可以指定个数]&#x3D;&#x3D;</li>
-<li>spop set &#x3D;&#x3D;随机删除一些set集合中的元素&#x3D;&#x3D;</li>
-<li>smove set1 set2 set1中的值  &#x3D;&#x3D;将set1集合中的值移动到set2中&#x3D;&#x3D;</li>
-<li>sdiff set1 set2   &#x3D;&#x3D;显示set1中有set2中没有的元素(差集)&#x3D;&#x3D;</li>
-<li>sinter set1 set2 &#x3D;&#x3D;显示set1和set2中公共的部分(交集)&#x3D;&#x3D;  【&#x3D;&#x3D;可以得到b站或者其他网站的共同关注的博主(2个账号)&#x3D;&#x3D;】</li>
-<li>sunion set1 set2 &#x3D;&#x3D;显示并集&#x3D;&#x3D;(&#x3D;&#x3D;虎牙直播的一个用户所关注的全部放在一个set集合中,主播的粉丝数也放在一个集合中&#x3D;&#x3D;)</li>
+<li>sadd  set  值  <font color=yellow>添加一个值到set集合中</font></li>
+<li>smembers set <font color=yellow>展示所有set集合中的值</font></li>
+<li>sismember  set  值  <font color=yellow>查看set集合中是否有这个值</font></li>
+<li>scard set  <font color=yellow>查看set集合中有多少个元素</font></li>
+<li>srem set 值  <font color=yellow>移除指定的值</font></li>
+<li>srandmember set[个数]  <font color=yellow>随机抽取set集合中元素[可以指定个数]</font></li>
+<li>spop set <font color=yellow>随机删除一些set集合中的元素</font></li>
+<li>smove set1 set2 set1中的值  <font color=yellow>将set1集合中的值移动到set2中</font></li>
+<li>sdiff set1 set2  <font color=yellow>显示set1中有set2中没有的元素(差集)</font></li>
+<li>sinter set1 set2 <font color=yellow>显示set1和set2中公共的部分(交集)</font>【<font color=yellow>可以得到b站或者其他网站的共同关注的博主(2个账号)</font>】</li>
+<li>sunion set1 set2 <font color=yellow>显示并集</font>(<font color=yellow>虎牙直播的一个用户所关注的全部放在一个set集合中,主播的粉丝数也放在一个集合中</font>)</li>
 </ul>
-<p>场景:&#x3D;&#x3D;共同关注&#x3D;&#x3D;，&#x3D;&#x3D;共同爱好&#x3D;&#x3D; ,&#x3D;&#x3D;二度好友&#x3D;&#x3D;，&#x3D;&#x3D;推荐好友!&#x3D;&#x3D;（六度分割理论） </p>
+<p>场景:<font color=yellow>共同关注</font>，<font color=yellow>共同爱好</font> ,<font color=yellow>二度好友</font>，<font color=yellow>推荐好友!</font>（六度分割理论） </p>
 <h3 id="4-Hash（哈希）详讲（本质和String没有什么区别-这是hash是key-vlaue）"><a href="#4-Hash（哈希）详讲（本质和String没有什么区别-这是hash是key-vlaue）" class="headerlink" title="4.Hash（哈希）详讲（本质和String没有什么区别,这是hash是key-vlaue）"></a>4.Hash（哈希）详讲（本质和String没有什么区别,这是hash是key-vlaue）</h3><h4 id="相当于Map集合-key-map"><a href="#相当于Map集合-key-map" class="headerlink" title="相当于Map集合(key-map)"></a>相当于Map集合(key-map)</h4><ul>
-<li>hset  hash  键 值   &#x3D;&#x3D;添加一个值&#x3D;&#x3D;</li>
-<li>hget  hash  键      &#x3D;&#x3D;获取一个值&#x3D;&#x3D;</li>
-<li>hmset hash 键 值  键1 值1  &#x3D;&#x3D;添加多个值&#x3D;&#x3D;</li>
-<li>hmget hash  键  键1  &#x3D;&#x3D;获取多个值&#x3D;&#x3D;</li>
-<li>hgetall  &#x3D;&#x3D;获取一个hash中的所有值&#x3D;&#x3D;</li>
-<li>hdel  &#x3D;&#x3D;删除一个hash中的key-vlaue&#x3D;&#x3D;</li>
-<li>hlen &#x3D;&#x3D;返回hash中的长度&#x3D;&#x3D;</li>
-<li>hexists  hash  键   &#x3D;&#x3D;查看hash中的键是否存在&#x3D;&#x3D;</li>
-<li>hkeys  hash  &#x3D;&#x3D;获取hash中所有的键&#x3D;&#x3D;</li>
-<li>hvals  hash&#x3D;&#x3D;获取hash中所有的值&#x3D;&#x3D;</li>
-<li>hincrby  hash   键   数值   &#x3D;&#x3D;所对应的键自增数值&#x3D;&#x3D;  </li>
-<li>hdecrby hash  键   数值    &#x3D;&#x3D;所对应的键自减数值&#x3D;&#x3D;</li>
+<li>hset  hash  键 值   <font color=yellow>添加一个值</font></li>
+<li>hget  hash  键     <font color=yellow>获取一个值</font></li>
+<li>hmset hash 键 值  键1 值1  <font color=yellow>添加多个值</font></li>
+<li>hmget hash  键  键1  <font color=yellow>获取多个值</font></li>
+<li>hgetall <font color=yellow>获取一个hash中的所有值</font></li>
+<li>hdel  <font color=yellow>删除一个hash中的key-vlaue</font></li>
+<li>hlen <font color=yellow>返回hash中的长度</font></li>
+<li>hexists  hash  键   <font color=yellow>查看hash中的键是否存在</font></li>
+<li>hkeys  hash  <font color=yellow>获取hash中所有的键</font></li>
+<li>hvals  hash<font color=yellow>获取hash中所有的值</font></li>
+<li>hincrby  hash   键   数值   <font color=yellow>所对应的键自增数值</font></li>
+<li>hdecrby hash  键   数值    <font color=yellow>所对应的键自减数值</font></li>
 </ul>
-<p>实际场景:&#x3D;&#x3D;hash变更的数据user name age,尤其是用户信息之类的,经常变动的信息！hash更适合于对象的存储,<br>String更加适合字符串存储&#x3D;&#x3D;</p>
+<p>实际场景:<font color=yellow>hash变更的数据user name age,尤其是用户信息之类的,经常变动的信息！hash更适合于对象的存储,<br>String更加适合字符串存储</font></p>
 <h3 id="5-Zset（有序集合）"><a href="#5-Zset（有序集合）" class="headerlink" title="5.Zset（有序集合）"></a>5.Zset（有序集合）</h3><ul>
-<li>&#x3D;&#x3D;在set的基础上,增加了一个值&#x3D;&#x3D;,set k1 v1  zset  k1  score v1  </li>
-<li>zadd    zset    1（数字）  值      &#x3D;&#x3D;添加元素&#x3D;&#x3D;</li>
-<li>zrange  zset 0  -1  &#x3D;&#x3D;取全部&#x3D;&#x3D;</li>
-<li>zrangebyscore  zset  -inf  +inf（withscores）   &#x3D;&#x3D;将集合中的元素全部排序好取出(从小到大)（带成绩数字）&#x3D;&#x3D;</li>
-<li>zrevrange zset  0 -1&#x3D;&#x3D;将集合中的元素全部排序好取出(从大到小)&#x3D;&#x3D;</li>
-<li>zrem  zset 值  &#x3D;&#x3D;移除zset中的值&#x3D;&#x3D;</li>
-<li>zcard  zset &#x3D;&#x3D;查看zset集合中的个数&#x3D;&#x3D;</li>
-<li>zcount zset  start end &#x3D;&#x3D;(获取start到end区间的指定数量是多少)&#x3D;&#x3D;</li>
+<li><font color=yellow>在set的基础上,增加了一个值&#x3D;&#x3D;,set k1 v1  zset  k1  score v1  </font></li>
+<li>zadd    zset    1（数字）  值      <font color=yellow>添加元素</font></li>
+<li>zrange  zset 0  -1  <font color=yellow>取全部</font></li>
+<li>zrangebyscore  zset  -inf  +inf（withscores）   <font color=yellow>将集合中的元素全部排序好取出(从小到大)（带成绩数字）</font></li>
+<li>zrevrange zset  0 -1 <font color=yellow>将集合中的元素全部排序好取出(从大到小)</font></li>
+<li>zrem  zset 值  <font color=yellow>移除zset中的值</font></li>
+<li>zcard  zset <font color=yellow>查看zset集合中的个数</font></li>
+<li>zcount zset  start end <font color=yellow>(获取start到end区间的指定数量是多少)</font></li>
 </ul>
-<p>案例思路:&#x3D;&#x3D;set排序&#x3D;&#x3D; &#x3D;&#x3D;存储班级成绩表&#x3D;&#x3D;,&#x3D;&#x3D;工作表排序!&#x3D;&#x3D;<br>普通消息, 1  重要消息  2 ,&#x3D;&#x3D;带权重进行判断&#x3D;&#x3D;<br>&#x3D;&#x3D;排行榜应用实现&#x3D;&#x3D;,&#x3D;&#x3D;取Top N测试!&#x3D;&#x3D;</p>
+<p>案例思路:<font color=yellow>set排序</font> <font color=yellow>存储班级成绩表</font>,<font color=yellow>工作表排序!</font><br>普通消息, 1  重要消息  2 ,<font color=yellow>带权重进行判断</font><br><font color=yellow>排行榜应用实现</font>,<font color=yellow>取Top N测试!</font></p>
 <h2 id="3-三种特殊数据类型"><a href="#3-三种特殊数据类型" class="headerlink" title="3.三种特殊数据类型"></a>3.三种特殊数据类型</h2><h3 id="1-geoadd-添加地理位置"><a href="#1-geoadd-添加地理位置" class="headerlink" title="1.geoadd  添加地理位置"></a>1.geoadd  添加地理位置</h3><ul>
 <li>有效的经度从-180到180度</li>
 <li>有效的纬度从-85到85</li>
-<li>&#x3D;&#x3D;规则:两级无法直接添加,我们一般会下载城市数据,直接通过java程序一次性导入！&#x3D;&#x3D;</li>
+<li><font color=yellow>规则:两级无法直接添加,我们一般会下载城市数据,直接通过java程序一次性导入！</font></li>
 <li>参数  key 值 (纬度.经度.名称)</li>
 <li>geoadd   chain:city   116.40 39.90 beijin  </li>
-<li>geopos  chain:city beijin &#x3D;&#x3D;从值中获取具体的经纬度(获取当前定位:一定是一个坐标值)&#x3D;&#x3D;</li>
-<li>geodist chain:city  beijing shanghai  &#x3D;&#x3D;得出beijing到shanghai的距离(默认单位为米) 可以加单位&#x3D;&#x3D;                                                             单位：m 米  km 千米  mi 英里  ft 英尺</li>
-<li>georadius &#x3D;&#x3D;以给定的经纬度为中心,找出某一半径内的元素&#x3D;&#x3D;</li>
-<li>&#x3D;&#x3D;我附件的人?(获取所有附件的人的地址,定位!) 通过半径来查询&#x3D;&#x3D;</li>
-<li>georadius chain:city 110 30  500km (withdist)(withcoord)(count 数字) &#x3D;&#x3D;查看经度110 纬度30 方圆500千米之内的元素(集合中的)(带距离)  （带经纬度）(查询指定的数量)&#x3D;&#x3D;</li>
-<li>georadiusbymember &#x3D;&#x3D;根据元素名找出半径内的元素&#x3D;&#x3D;</li>
+<li>geopos  chain:city beijin <font color=yellow>从值中获取具体的经纬度(获取当前定位:一定是一个坐标值)</font></li>
+<li>geodist chain:city  beijing shanghai  <font color=yellow>得出beijing到shanghai的距离(默认单位为米) 可以加单位</font>                                                        单位：m 米  km 千米  mi 英里  ft 英尺</li>
+<li>georadius <font color=yellow>以给定的经纬度为中心,找出某一半径内的元素</font></li>
+<li><font color=yellow>我附件的人?(获取所有附件的人的地址,定位!) 通过半径来查询</font></li>
+<li>georadius chain:city 110 30  500km (withdist)(withcoord)(count 数字) <font color=yellow>查看经度110 纬度30 方圆500千米之内的元素(集合中的)(带距离)  （带经纬度）(查询指定的数量)</font></li>
+<li>georadiusbymember <font color=yellow>根据元素名找出半径内的元素</font></li>
 <li>georadiusbymember chain:city  beijing  1000 km </li>
-<li>geohash命令  &#x3D;&#x3D;返回一个或者多个位置元素的geohash表示(不常用)&#x3D;&#x3D;  &#x3D;&#x3D;该命令将返回11个字符的geohash字符串&#x3D;&#x3D;</li>
-<li>geohash chain:city beijing   &#x3D;&#x3D;将二维的经纬度转换为一维的字符串,如果两个字符串越接近,那么则距离越近&#x3D;&#x3D;</li>
-<li>&#x3D;&#x3D;geo底层的实现原理其实就是zset 我们可以使用zset命令来操作geo(进行删除或者别的)&#x3D;&#x3D;</li>
+<li>geohash命令  <font color=yellow>返回一个或者多个位置元素的geohash表示(不常用)</font>  <font color=yellow>该命令将返回11个字符的geohash字符串</font></li>
+<li>geohash chain:city beijing   <font color=yellow>将二维的经纬度转换为一维的字符串,如果两个字符串越接近,那么则距离越近</font></li>
+<li><font color=yellow>geo底层的实现原理其实就是zset 我们可以使用zset命令来操作geo(进行删除或者别的)</font></li>
 </ul>
-<h3 id="2-Hyperloglog"><a href="#2-Hyperloglog" class="headerlink" title="2.Hyperloglog"></a>2.Hyperloglog</h3><h3 id="什么是基数"><a href="#什么是基数" class="headerlink" title="什么是基数?"></a>什么是基数?</h3><p>A{1,3,5,7,8,7}<br>B{1,3,5,7,8}  &#x3D;&#x3D;基数(不重复的元素),可以接受误差&#x3D;&#x3D;</p>
+<h3 id="2-Hyperloglog"><a href="#2-Hyperloglog" class="headerlink" title="2.Hyperloglog"></a>2.Hyperloglog</h3><h3 id="什么是基数"><a href="#什么是基数" class="headerlink" title="什么是基数?"></a>什么是基数?</h3><p>A{1,3,5,7,8,7}<br>B{1,3,5,7,8}  <font color=yellow>基数(不重复的元素),可以接受误差</font></p>
 <p>简介</p>
-<p>Redis 2.8.9版本就更新了Hyperloglog数据结构<br>Redis Hyperloglog 基数统计的算法<br>优点:&#x3D;&#x3D;占用的内存是固定&#x3D;&#x3D;,2^64不同的元素的技术,只需要废12kb内存!如果要从内存的角度来比较的话Hyperloglog首选<br>网页的UV(&#x3D;&#x3D;一个人访问一个网站多次,但是还是算一个人&#x3D;&#x3D;)<br>传统的方式,&#x3D;&#x3D;set保存用户的id，然后就可以统计set中的元素数量作为标准判断&#x3D;&#x3D;<br>这个方式如果保存大量的用户id,就会比较麻烦,我们的&#x3D;&#x3D;目的是为了计数&#x3D;&#x3D;,而&#x3D;&#x3D;不是保存用户id&#x3D;&#x3D;<br>0.81%错误率   统计UV任务,可以忽略不计的<br>pfadd  myhyp   a b c d e f  添加元素<br>pfadd  myhyp1   a b c d e f   e  g<br>pfcount  myhyp  统计数目<br>pfmerge  myhyp2 myhyp myhyp1  &#x3D;&#x3D;合并(并集)到myhyp2 (重复的元素不算)&#x3D;&#x3D;</p>
-<p>&#x3D;&#x3D;如果允许容错,那么就一定可以使用Hyperloglog&#x3D;&#x3D;<br>&#x3D;&#x3D;如果不允许容错,就使用set或者自己的数据类型即可&#x3D;&#x3D;</p>
-<h3 id="3-Bitmaps"><a href="#3-Bitmaps" class="headerlink" title="3.Bitmaps"></a>3.Bitmaps</h3><h4 id="位存储"><a href="#位存储" class="headerlink" title="位存储"></a>位存储</h4><p>&#x3D;&#x3D;统计用户信息&#x3D;&#x3D;,&#x3D;&#x3D;活跃,不活跃！&#x3D;&#x3D; &#x3D;&#x3D;登录，未登入 ！&#x3D;&#x3D; &#x3D;&#x3D;打卡  两个状态&#x3D;&#x3D;  都可以使用Bitmaps！<br>Bitmaps位图,数据结构！&#x3D;&#x3D;都是操作二进制位来进行记录&#x3D;&#x3D;,就&#x3D;&#x3D;只有0和1 两个状态&#x3D;&#x3D;<br>用bitmap来&#x3D;&#x3D;记录周一到周日的打卡情况&#x3D;&#x3D;<br>setbit sgin 1 0   setbit sgin 2  1   setbit sgin 3 0  …..<br>周一:0  周二:1  周三:0 …<br>查看某一天的打卡情况  getbit sgin 2  — 1   已经打卡<br>&#x3D;&#x3D;bitcount sgin 统计打卡的天数&#x3D;&#x3D;</p>
-<h2 id="4-事务"><a href="#4-事务" class="headerlink" title="4.事务"></a>4.事务</h2><p>&#x3D;&#x3D;Redis单条命令是保证原子性的&#x3D;&#x3D;,但是&#x3D;&#x3D;事务不保证原子性&#x3D;&#x3D;<br>&#x3D;&#x3D;Redis事务本质&#x3D;&#x3D;:&#x3D;&#x3D;一组命令的集合&#x3D;&#x3D;! &#x3D;&#x3D;一个事务中所有命令都会被序列化&#x3D;&#x3D;,在事务执行过程中,会依照顺序执行<br>一次性,顺序性,排他性!执行一些列的命令!<br>—队列 set set set 执行—<br>&#x3D;&#x3D;Redis事务没有隔离级别的概念!&#x3D;&#x3D;<br>所有的命令在事务中,并没有直接被执行！只有发起执行命令的时候才会执行<br>redis的事务:</p>
+<p>Redis 2.8.9版本就更新了Hyperloglog数据结构<br>Redis Hyperloglog 基数统计的算法<br>优点:<font color=yellow>占用的内存是固定</font>,2^64不同的元素的技术,只需要废12kb内存!如果要从内存的角度来比较的话Hyperloglog首选<br>网页的UV(<font color=yellow>一个人访问一个网站多次,但是还是算一个人</font>)<br>传统的方式,<font color=yellow>set保存用户的id，然后就可以统计set中的元素数量作为标准判断</font><br>这个方式如果保存大量的用户id,就会比较麻烦,我们的<font color=yellow>目的是为了计数</font>,而<font color=yellow>不是保存用户id</font><br>0.81%错误率   统计UV任务,可以忽略不计的<br>pfadd  myhyp   a b c d e f  添加元素<br>pfadd  myhyp1   a b c d e f   e  g<br>pfcount  myhyp  统计数目<br>pfmerge  myhyp2 myhyp myhyp1  <font color=yellow>合并(并集)到myhyp2 (重复的元素不算)</font></p>
+<p><font color=yellow>如果允许容错,那么就一定可以使用Hyperloglog</font><br><font color=yellow>如果不允许容错,就使用set或者自己的数据类型即可</font></p>
+<h3 id="3-Bitmaps"><a href="#3-Bitmaps" class="headerlink" title="3.Bitmaps"></a>3.Bitmaps</h3><h4 id="位存储"><a href="#位存储" class="headerlink" title="位存储"></a>位存储</h4><p><font color=yellow>统计用户信息</font>,<font color=yellow>活跃,不活跃！</font> <font color=yellow>登录，未登入 ！</font><font color=yellow>打卡  两个状态</font>  都可以使用Bitmaps！<br>Bitmaps位图,数据结构！<font color=yellow>都是操作二进制位来进行记录</font>,就<font color=yellow>只有0和1 两个状态</font><br>用bitmap来<font color=yellow>记录周一到周日的打卡情况</font><br>setbit sgin 1 0   setbit sgin 2  1   setbit sgin 3 0  …..<br>周一:0  周二:1  周三:0 …<br>查看某一天的打卡情况  getbit sgin 2  — 1   已经打卡<br><font color=yellow>bitcount sgin 统计打卡的天数</font></p>
+<h2 id="4-事务"><a href="#4-事务" class="headerlink" title="4.事务"></a>4.事务</h2><p><font color=yellow>Redis单条命令是保证原子性的</font>,但是<font color=yellow>事务不保证原子性</font><br><font color=yellow>Redis事务本质:一组命令的集合</font>! <font color=yellow>一个事务中所有命令都会被序列化</font>,在事务执行过程中,会依照顺序执行<br>一次性,顺序性,排他性!执行一些列的命令!<br>—队列 set set set 执行—<br><font color=yellow>Redis事务没有隔离级别的概念!</font><br>所有的命令在事务中,并没有直接被执行！只有发起执行命令的时候才会执行<br>redis的事务:</p>
 <ul>
 <li>开始事务（multi）</li>
 <li>命令入队（自动完成）</li>
@@ -140,10 +140,10 @@
 
 
 
-<p>编译型异常(&#x3D;&#x3D;代码有问题!命令错误！&#x3D;&#x3D;),&#x3D;&#x3D;事务中所有的命令都不会被执行&#x3D;&#x3D;</p>
+<p>编译型异常(<font color=yellow>代码有问题!命令错误！</font>),<font color=yellow>事务中所有的命令都不会被执行</font></p>
 <figure class="highlight bash"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs bash">127.0.0.1:6379&gt; multi<br>OK<br>127.0.0.1:6379&gt; <span class="hljs-built_in">set</span> k1 v1<br>QUEUED<br>127.0.0.1:6379&gt; <span class="hljs-built_in">set</span> k2 v2 <br>QUEUED<br>127.0.0.1:6379&gt; getset k3   <span class="hljs-comment">#命令错误,事务中的所有的命令都不会被执行</span><br>(error) ERR wrong number of arguments <span class="hljs-keyword">for</span> <span class="hljs-string">&#x27;getset&#x27;</span> <span class="hljs-built_in">command</span>  <br>127.0.0.1:6379&gt; get k2<br>QUEUED<br>127.0.0.1:6379&gt; <span class="hljs-built_in">exec</span><br>(error) EXECABORT Transaction discarded because of previous errors.<br>127.0.0.1:6379&gt; get k2<br><span class="hljs-string">&quot;v2&quot;</span><br>127.0.0.1:6379&gt;<br></code></pre></td></tr></table></figure>
 
-<p>运行时异常(I&#x2F;0)，&#x3D;&#x3D;如果事务队列中存在语法性错误&#x3D;&#x3D;,那么执行命令的时候,&#x3D;&#x3D;其他命令是可以正常执行的&#x3D;&#x3D;,错误命令抛出异常</p>
+<p>运行时异常(I&#x2F;0)，<font color=yellow>如果事务队列中存在语法性错误</font>,那么执行命令的时候,<font color=yellow>其他命令是可以正常执行的</font>,错误命令抛出异常</p>
 <figure class="highlight bash"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs bash">127.0.0.1:6379&gt; multi<br>OK<br>127.0.0.1:6379&gt; incr k1<br>QUEUED<br>127.0.0.1:6379&gt; <span class="hljs-built_in">set</span> k2 v2<br>QUEUED<br>127.0.0.1:6379&gt; get k2<br>QUEUED<br>127.0.0.1:6379&gt; <span class="hljs-built_in">exec</span><br>1) (error) ERR value is not an <span class="hljs-built_in">integer</span> or out of range    <span class="hljs-comment">#这里是字符串不能做为自增的对象,运行时发生了异常</span><br>2) OK<br>3) <span class="hljs-string">&quot;v2&quot;</span><br>127.0.0.1:6379&gt;<br></code></pre></td></tr></table></figure>
 
 
@@ -160,13 +160,13 @@
 
 <p>Redis的视:watch</p>
 <p><strong>watch,监视键值对，作用时如果事务提交exec时发现监视的监视对发生变化，事务将被取消。</strong></p>
-<p>&#x3D;&#x3D;测试多线程修改值,使用watch可以当做redis的乐观锁操作&#x3D;&#x3D; : 修改值会失败</p>
+<p><font color=yellow>测试多线程修改值,使用watch可以当做redis的乐观锁操作</font> : 修改值会失败</p>
 <p><img src="C:/Users/ASUS/AppData/Roaming/Typora/typora-user-images/image-20220927164638199.png" alt="image-20220927164638199"></p>
 <figure class="highlight bash"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs bash">Redis中对乐观锁的实现： 假设有一个age的key，我们开启两个session来对age进行赋值操作。<br>session1：<br>127.0.0.1:6379&gt; get age <br><span class="hljs-string">&quot;10&quot;</span> <br>127.0.0.1:6379&gt; watch age <span class="hljs-comment">#打开对age键的监控（监控其他操作是否对age键有修改操作） </span><br>OK<br>127.0.0.1:6379&gt; multi <span class="hljs-comment">#开启事务上下文 </span><br>OK<br><br>session2： <br>127.0.0.1:6379&gt; <span class="hljs-built_in">set</span> age 20 <br>OK<br>127.0.0.1:6379&gt; get age <br><span class="hljs-string">&quot;20&quot;</span><br><br>再看session1： <br>127.0.0.1:6379&gt; <span class="hljs-built_in">set</span> age 30 <span class="hljs-comment">#在session2中操作age后，我们在session1中继续操作age</span><br>127.0.0.1:6379&gt; <span class="hljs-built_in">exec</span> <span class="hljs-comment">#执行事务 返回nil 事务执行不成功。 </span><br>(nil) <br>127.0.0.1:6379&gt; get age <br><span class="hljs-string">&quot;20&quot;</span><br></code></pre></td></tr></table></figure>
 
 <p>在这里我们发现事务不能执行成功，这就是因为session1中的<strong>数据版本已经小于数据库中的数据版本</strong>。这就是Redis的乐观锁。</p>
 <p><img src="C:/Users/ASUS/Pictures/Saved%20Pictures/%E8%B6%B3%E7%90%83%E9%9E%8B%E8%B6%B3%E7%90%83%E8%A3%85%E5%A4%87%E9%97%A8%E6%88%B7-%E5%81%B6%E5%81%B6%E8%B6%B3%E7%90%83%E8%A3%85%E5%A4%87%E7%BD%91_files/20201115115331630.png" alt="在这里插入图片描述"></p>
-<h2 id="5-Jedis"><a href="#5-Jedis" class="headerlink" title="5.Jedis"></a>5.Jedis</h2><p>&#x3D;&#x3D;我们要使用java来操作Redis&#x3D;&#x3D;<br>什么是Jedis: &#x3D;&#x3D;是Redis官方推荐的java连接开发工具! 使用java操作Redis中间件!&#x3D;&#x3D; 如果你要使用java操作Redis<br>那么一定要对Jedis十分的熟悉</p>
+<h2 id="5-Jedis"><a href="#5-Jedis" class="headerlink" title="5.Jedis"></a>5.Jedis</h2><p><font color=yellow>我们要使用java来操作Redis</font><br>什么是Jedis: <font color=yellow>是Redis官方推荐的java连接开发工具! 使用java操作Redis中间件!</font> 如果你要使用java操作Redis<br>那么一定要对Jedis十分的熟悉</p>
 <p>1.测试</p>
 <figure class="highlight java"><button class="btn-copy" data-clipboard-snippet="" title="复制"><img src="//img.mrzgh.top/Blog/Website/icon/copy.svg" /></button><table><tr><td class="code"><pre><code class="hljs java">&lt;dependency&gt;<br>           &lt;groupId&gt;redis.clients&lt;/groupId&gt;<br>           &lt;artifactId&gt;jedis&lt;/artifactId&gt;<br>           &lt;version&gt;<span class="hljs-number">2.9</span><span class="hljs-number">.0</span>&lt;/version&gt;<br>       &lt;/dependency&gt;<br>       &lt;dependency&gt;<br>           &lt;groupId&gt;com.alibaba&lt;/groupId&gt;<br>           &lt;artifactId&gt;fastjson&lt;/artifactId&gt;<br>           &lt;version&gt;<span class="hljs-number">1.2</span><span class="hljs-number">.76</span>&lt;/version&gt;<br>       &lt;/dependency&gt;<br> <span class="hljs-comment">///导入相关依赖</span><br></code></pre></td></tr></table></figure>
 
